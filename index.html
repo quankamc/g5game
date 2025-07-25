@@ -81,7 +81,7 @@ document.onclick=reEnable
 <!--Code-Chống click chuột phải--->
   </head>
 
-  <body>
+  <body onload="thongbaopopup()">
     <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <!-- Include all compiled plugins (below), or include individual files as needed -->
@@ -195,5 +195,15 @@ document.onclick=reEnable
 	<div class="footer-copyright text-center py-3">
 		<span class="text-muted">Copyright © 2025 G5Games. All right reserved.</span>
 	</div>
+<!---Code-Thông báo----->
+<div class="tbpopup" id="tbpopup-1">
+    <div class="tboverlay" onclick="thongbaopopup()"></div>
+    <div class="tbcontent">
+        <div class="tbclose-btn" onclick="thongbaopopup()">&times;</div>
+        <div style="font-size:30px;font-weight:bold">Toancr SEO</div>
+        <p>Chào bạn đến với website G5.PRO.VN!</p>
+    </div>
+</div>
+<!---Code-Thông báo----->	  
 </footer>
   </body></html>
