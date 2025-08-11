@@ -3,1654 +3,466 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình tạo hình ảnh Phật pháp AI</title>
+    <title>Ứng Dụng Tạo Hình Ảnh AI</title>
+    <!-- Thư viện Tailwind CSS để tạo giao diện đẹp và tương thích di động -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <!-- Thư viện Icon Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2gS6iT3P0/BfL3Q74i5wV2u54wQeN5T15t5Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <!-- Thư viện Firebase -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, onSnapshot, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Biến toàn cục từ môi trường Canvas
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Khởi tạo Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Biến toàn cục để lưu userId
+        let userId = null;
+        let isAuthReady = false;
+
+        // Xử lý xác thực người dùng
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                userId = user.uid;
+            } else {
+                try {
+                    // Nếu không có token, đăng nhập ẩn danh
+                    if (!initialAuthToken) {
+                        await signInAnonymously(auth);
+                    } else {
+                        await signInWithCustomToken(auth, initialAuthToken);
+                    }
+                    userId = auth.currentUser.uid;
+                } catch (error) {
+                    console.error("Lỗi xác thực người dùng:", error);
+                }
+            }
+            isAuthReady = true;
+        });
+
+        window.firebaseApp = {
+            db,
+            auth,
+            getUserId: () => userId,
+            isAuthReady: () => isAuthReady
+        };
+    </script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body {
             font-family: 'Inter', sans-serif;
-            transition: background 0.5s ease-in-out;
-            background-size: 200% 200%;
-        }
-
-        /* Các lớp CSS cho hình nền chuyển màu */
-        .bg-gradient-purple-blue { background: linear-gradient(to right, #e0f2fe, #ede9fe); }
-        .bg-gradient-green-yellow { background: linear-gradient(to right, #f0fdf4, #fefce8); }
-        .bg-gradient-gray-blue { background: linear-gradient(to right, #f1f5f9, #dbeafe); }
-        .bg-gradient-orange-pink { background: linear-gradient(to right, #fff7ed, #fee2e2); }
-        .bg-gradient-green-teal { background: linear-gradient(to right, #f0fdf4, #bbf7d0); }
-        .bg-solid-white { background-color: #ffffff; }
-        .bg-solid-cream { background-color: #fef3c7; }
-
-        /* Hiệu ứng chuyển động nền */
-        @keyframes animate-background-pan {
-            from { background-position: 0% 0%; }
-            to { background-position: 100% 100%; }
-        }
-
-        .animate-background {
-            animation: animate-background-pan 10s ease-in-out infinite alternate;
-        }
-
-        .container {
-            max-width: 90%;
-            margin: auto;
-            padding: 2.5rem;
-            transition: opacity 0.5s ease-in-out;
-        }
-        @media (min-width: 768px) {
-            .container {
-                max-width: 800px;
-            }
-        }
-
-        /* CSS cho màn hình chào mừng */
-        #welcome-screen {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 100;
-            transition: background 0.5s ease-in-out;
-        }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes fadeOut {
-            from { opacity: 1; }
-            to { opacity: 0; }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-in-out;
-        }
-
-        .fade-out {
-            animation: fadeOut 0.5s ease-in-out forwards;
-        }
-
-        /* CSS cho Modal */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            opacity: 0;
-            visibility: hidden;
-            transition: visibility 0s, opacity 0.3s;
-            z-index: 50;
-        }
-
-        .modal.show {
-            opacity: 1;
-            visibility: visible;
-        }
-
-        .modal-content {
-            background-color: white;
-            padding: 2rem;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            width: 90%;
-            max-width: 500px;
-            transform: translateY(-20px);
-            transition: transform 0.3s;
-        }
-        .modal.show .modal-content {
-            transform: translateY(0);
-        }
-
-        /* CSS cho thẻ phản hồi */
-        .feedback-card {
-            background-color: #f7f9fc;
-            padding: 1.5rem;
-            border-radius: 1rem;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 1rem;
-        }
-
-        /* CSS cho nút Lưu hình ảnh */
-        .save-button.saved {
-            background-color: #d1fae5;
-            color: #10b981;
-        }
-
-        /* CSS cho modal chỉnh sửa hình ảnh */
-        #edit-image-modal .modal-content {
-            max-width: 90%;
-            max-height: 90%;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #edit-canvas {
-            border: 1px solid #e2e8f0;
-            margin-bottom: 1rem;
-            cursor: crosshair;
-        }
-
-        .tool-button {
-            @apply p-2 rounded-lg text-gray-700 bg-gray-200 hover:bg-gray-300;
-        }
-        
-        .tool-button.active {
-            @apply bg-indigo-500 text-white hover:bg-indigo-600;
-        }
-        
-        .tab-button {
-            @apply px-4 py-2 text-sm font-semibold text-gray-600 border-b-2 border-transparent hover:text-indigo-700 hover:border-indigo-500 transition-colors;
-        }
-        .tab-button.active {
-            @apply text-indigo-700 border-indigo-500;
-        }
-
-        .comment-section {
-            @apply mt-4 p-4 bg-gray-50 rounded-lg;
+            background-color: #f3f4f6;
         }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
-    <!-- Màn hình chào mừng -->
-    <div id="welcome-screen" class="fade-in">
-        <h1 class="text-4xl font-bold text-indigo-700 mb-4" data-lang-key="welcome-title">Chào mừng đến với</h1>
-        <h2 class="text-3xl font-semibold text-gray-800" data-lang-key="title-welcome">Trình tạo hình ảnh Phật pháp</h2>
-        <p class="mt-4 text-gray-600" data-lang-key="welcome-text">Ứng dụng đang tải, vui lòng chờ một chút...</p>
-    </div>
+<body class="p-4 bg-gray-100 flex flex-col items-center justify-center min-h-screen">
 
-    <!-- Nội dung chính của ứng dụng -->
-    <div id="app-content" class="container bg-white p-8 rounded-3xl shadow-2xl border-2 border-indigo-100 hidden opacity-0">
-        <div class="flex justify-between items-center mb-8">
-            <h1 class="text-3xl font-bold text-indigo-800 flex items-center">
-                <!-- Inline SVG cho biểu tượng bông sen -->
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" class="w-8 h-8 mr-4 text-pink-500">
-                    <path fill="currentColor" d="M256 512A256 256 0 1 0 256 0a256 256 0 1 0 0 512zM320 256c0 17.7-14.3 32-32 32s-32-14.3-32-32c0-21.7 20.3-46.3 32-58.8c11.7 12.5 32 37.1 32 58.8zM448 256c0 52.8-21.5 101-56.5 137.9c-24.1 25.1-55.6 42.1-90.8 49.3c-23.7-27.1-51.5-63.5-51.5-94.2c0-30.8 27.8-67.2 51.5-94.2c35.2 7.2 66.7 24.2 90.8 49.3C426.5 155 448 203.2 448 256zM64 256c0-52.8 21.5-101 56.5-137.9c24.1-25.1 55.6-42.1 90.8-49.3c-23.7 27.1-51.5 63.5-51.5-94.2c0-30.8 27.8-67.2 51.5-94.2c-35.2 7.2-66.7 24.2-90.8 49.3C85.5 357 64 308.8 64 256zM256 64c-35.2 7.2-66.7 24.2-90.8 49.3C141.5 155 120 203.2 120 256c0 52.8 21.5 101 56.5 137.9c24.1 25.1 55.6 42.1 90.8 49.3c-23.7 27.1-51.5 63.5-51.5-94.2c0-30.8 27.8-67.2 51.5-94.2zM256 384c-35.2-7.2-66.7-24.2-90.8-49.3C141.5 357 120 308.8 120 256c0-52.8 21.5-101 56.5-137.9c24.1 25.1 55.6 42.1 90.8 49.3c-23.7 27.1-51.5 63.5-51.5-94.2c0-30.8 27.8-67.2 51.5-94.2z"/>
-                </svg>
-                <span data-lang-key="title">Trình tạo hình ảnh Phật pháp</span>
-            </h1>
-            <div class="flex items-center space-x-2">
-                 <i class="fa-solid fa-globe text-gray-600"></i>
-                 <select id="lang-select" class="p-2 border border-gray-300 rounded-lg">
-                    <option value="vi">Tiếng Việt</option>
-                    <option value="en">English</option>
-                </select>
-            </div>
-        </div>
-        
-        <p class="text-gray-600 mb-8 leading-relaxed" data-lang-key="description">
-            Nhập mô tả chi tiết, chọn phong cách và số lượng để AI tạo ra hình ảnh cho bạn.
-        </p>
-
+    <!-- Container chính của ứng dụng -->
+    <div class="bg-white p-8 rounded-2xl shadow-xl max-w-3xl w-full mb-8">
+        <!-- Ngôn ngữ và tiêu đề -->
         <div class="flex justify-between items-center mb-6">
-            <p id="user-email-display" class="text-sm font-semibold text-gray-700"></p>
-            <div class="flex space-x-2">
-                <button id="profile-button" class="bg-indigo-100 text-indigo-700 font-semibold py-2 px-4 rounded-lg hover:bg-indigo-200 transition-colors hidden">
-                    <i class="fa-solid fa-user mr-2"></i>
-                    <span data-lang-key="profile-button">Hồ sơ</span>
-                </button>
-                <button id="public-gallery-button" class="bg-blue-100 text-blue-700 font-semibold py-2 px-4 rounded-lg hover:bg-blue-200 transition-colors hidden">
-                    <i class="fa-solid fa-images mr-2"></i>
-                    <span data-lang-key="public-gallery">Bộ sưu tập công khai</span>
-                </button>
-                <button id="signout-button" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors hidden">
-                    <i class="fa-solid fa-right-from-bracket mr-2"></i>
-                    <span data-lang-key="signout-button">Đăng xuất</span>
-                </button>
-            </div>
-        </div>
-        
-        <div class="flex mb-6 space-x-4">
-             <button id="app-tab-button" class="tab-button active" data-lang-key="app-tab-button">Tạo hình ảnh</button>
-             <button id="profile-tab-button" class="tab-button" data-lang-key="profile-tab-button">Hồ sơ</button>
-             <button id="public-gallery-tab-button" class="tab-button" data-lang-key="public-gallery-tab-button">Bộ sưu tập</button>
-        </div>
-
-        <!-- Tùy chọn hình nền mới - sử dụng dropdown -->
-        <div class="mb-6">
-            <label for="bg-select" class="block text-gray-700 font-semibold mb-2" data-lang-key="background-label">Chọn hình nền:</label>
-            <select id="bg-select" class="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-200 transition-all">
-                <option value="purple-blue" data-lang-key="bg-purple-blue">Gradient Xanh-Tím</option>
-                <option value="orange-pink" data-lang-key="bg-orange-pink">Bình Minh</option>
-                <option value="green-teal" data-lang-key="bg-green-teal">Thiên Nhiên</option>
-                <option value="green-yellow" data-lang-key="bg-green-yellow">Gradient Xanh lá-Vàng</option>
-                <option value="gray-blue" data-lang-key="bg-gray-blue">Gradient Xám-Xanh</option>
-                <option value="white" data-lang-key="bg-white">Trắng tinh</option>
-                <option value="cream" data-lang-key="bg-cream">Kem Nhẹ</option>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800" data-lang-key="title">
+                <i class="fa-solid fa-sparkles text-blue-500 mr-2"></i>Tạo Hình Ảnh AI
+            </h1>
+            <select id="language-select" class="p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="vi" selected>Tiếng Việt</option>
+                <option value="en">English</option>
             </select>
         </div>
 
-        <!-- Hiển thị giới hạn hàng ngày và thời gian làm mới -->
-        <div id="daily-limit-status" class="bg-indigo-50 text-indigo-700 p-4 rounded-xl text-center font-medium mb-6">
-            <p data-lang-key="limit-text">Số lượt tạo hôm nay: <span id="current-count">0</span> / <span id="daily-limit">5</span></p>
-            <p id="reset-timer" class="mt-2 text-sm text-indigo-500"></p>
-        </div>
+        <p class="text-center text-gray-600 mb-6" data-lang-key="description">
+            Nhập mô tả, chọn phong cách và tỷ lệ khung hình để tạo hình ảnh.
+        </p>
 
-        <div class="space-y-6">
-            <div>
-                <label for="prompt-input" class="block text-gray-700 font-semibold mb-2" data-lang-key="prompt-label">Mô tả hình ảnh:</label>
-                <textarea id="prompt-input" rows="4" class="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-200 transition-all resize-none" placeholder="Ví dụ: Một bức tượng Phật Thích Ca Mâu Ni thiền định dưới gốc cây Bồ đề vào lúc hoàng hôn, phong cách tranh thủy mặc..."></textarea>
+        <!-- Ô nhập liệu cho prompt -->
+        <textarea id="prompt-input" rows="4" class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4 text-gray-700" placeholder="Ví dụ: Một chú mèo phi hành gia đang bay trong vũ trụ, phong cách hoạt hình"></textarea>
+        
+        <!-- Các tùy chọn nâng cao -->
+        <div class="flex flex-col sm:flex-row gap-4 mb-4">
+            <!-- Chọn phong cách -->
+            <div class="flex-1">
+                <label for="style-select" class="block text-gray-700 font-semibold mb-2" data-lang-key="styleLabel">
+                    <i class="fa-solid fa-palette text-gray-500 mr-2"></i>Phong cách
+                </label>
+                <select id="style-select" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="" data-lang-key="defaultStyle" selected>Mặc định</option>
+                    <option value=", phong cách hoạt hình" data-lang-key="cartoonStyle">Hoạt hình</option>
+                    <option value=", phong cách sơn dầu" data-lang-key="oilPaintingStyle">Sơn dầu</option>
+                    <option value=", phong cách nhiếp ảnh thực tế" data-lang-key="realisticStyle">Nhiếp ảnh thực tế</option>
+                    <option value=", phong cách nghệ thuật kỹ thuật số" data-lang-key="digitalArtStyle">Nghệ thuật số</option>
+                    <option value=", phong cách vẽ chì" data-lang-key="pencilDrawingStyle">Vẽ chì</option>
+                </select>
             </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                    <label for="style-select" class="block text-gray-700 font-semibold mb-2" data-lang-key="style-label">Chọn phong cách:</label>
-                    <select id="style-select" class="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-200 transition-all">
-                        <option value="hyper realistic, detailed, high resolution, professional photography" data-lang-key="style-hyper-realistic" selected>Phong cách chân thực tuyệt đối</option>
-                        <option value="realistic painting style" data-lang-key="style-realistic">Phong cách hiện thực</option>
-                        <option value="ink wash painting style" data-lang-key="style-inkwash">Tranh thủy mặc</option>
-                        <option value="fantasy digital art style" data-lang-key="style-fantasy">Nghệ thuật số giả tưởng</option>
-                        <option value="oil painting style" data-lang-key="style-oil">Tranh sơn dầu</option>
-                        <option value="cartoon style" data-lang-key="style-cartoon">Phong cách hoạt hình</option>
-                        <option value="anime style" data-lang-key="style-anime">Phong cách Anime</option>
-                        <option value="watercolor painting style" data-lang-key="style-watercolor">Tranh màu nước</option>
-                        <option value="pixel art style" data-lang-key="style-pixel">Nghệ thuật Pixel</option>
-                    </select>
-                </div>
-                <div>
-                    <label for="count-select" class="block text-gray-700 font-semibold mb-2" data-lang-key="count-label">Số lượng hình ảnh:</label>
-                    <select id="count-select" class="w-full p-4 border border-gray-300 rounded-xl focus:outline-none focus:ring-4 focus:ring-indigo-200 transition-all">
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                    </select>
-                </div>
+
+            <!-- Chọn tỷ lệ khung hình -->
+            <div class="flex-1">
+                <label for="aspect-ratio-select" class="block text-gray-700 font-semibold mb-2" data-lang-key="aspectRatioLabel">
+                    <i class="fa-solid fa-crop-simple text-gray-500 mr-2"></i>Tỷ lệ khung hình
+                </label>
+                <select id="aspect-ratio-select" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="1:1" selected>1:1 (Hình vuông)</option>
+                    <option value="16:9">16:9 (YouTube)</option>
+                    <option value="9:16">9:16 (TikTok)</option>
+                </select>
             </div>
         </div>
 
-        <button id="generate-button" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-4 px-4 rounded-xl shadow-lg transition-all duration-300 transform hover:scale-105 active:scale-100 mt-8 flex items-center justify-center space-x-2">
-            <i class="fa-solid fa-wand-magic-sparkles"></i>
-            <span data-lang-key="generate-button">Tạo hình ảnh</span>
+        <!-- Nút để kích hoạt việc tạo hình ảnh -->
+        <button id="generate-button" class="w-full bg-blue-600 text-white font-semibold py-3 rounded-lg shadow-md hover:bg-blue-700 transition duration-300 ease-in-out">
+            <i class="fa-solid fa-magic-wand-sparkles mr-2"></i><span data-lang-key="generateButton">Tạo Hình Ảnh</span>
         </button>
 
-        <div id="loading-spinner" class="mt-8 text-center hidden">
-            <div class="w-12 h-12 border-4 border-dashed rounded-full animate-spin border-indigo-600 inline-block"></div>
-            <p class="mt-4 text-indigo-600 font-medium" data-lang-key="loading-text">Đang tạo hình ảnh, vui lòng chờ...</p>
-        </div>
-        
-        <div id="image-results" class="mt-10 hidden">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6" data-lang-key="results-title">Hình ảnh đã tạo:</h2>
-            <div id="image-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <!-- Image cards will be inserted here by JavaScript -->
+        <!-- Khu vực hiển thị hình ảnh và trạng thái -->
+        <div id="image-container" class="mt-8 flex flex-col items-center">
+            <div id="loading-spinner" class="hidden">
+                <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+                <p class="mt-4 text-gray-500" data-lang-key="loadingMessage">Đang tạo hình ảnh...</p>
             </div>
-        </div>
-        
-        <div id="message-box" class="mt-6 text-center p-3 rounded-lg text-sm hidden transition-all duration-300"></div>
+            
+            <img id="generated-image" class="hidden w-full h-auto rounded-lg shadow-lg" alt="Hình ảnh được tạo bởi AI">
 
-        <!-- Phần hiển thị phản hồi -->
-        <div id="feedback-section" class="mt-12">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6" data-lang-key="all-feedback-title">Phản hồi của người dùng</h2>
-            <div id="feedback-list" class="space-y-4">
-                <!-- Phản hồi sẽ được chèn vào đây -->
-            </div>
-            <div id="feedback-loading" class="text-center text-gray-500 mt-4 hidden">
-                <p>Đang tải phản hồi...</p>
-            </div>
-        </div>
+            <a id="download-link" class="hidden mt-4 bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition duration-300 ease-in-out" download="ai-image.png">
+                <i class="fa-solid fa-download mr-2"></i><span data-lang-key="downloadButton">Tải Xuống</span>
+            </a>
 
-        <!-- Phần chân trang với bản quyền và nút phản hồi -->
-        <footer class="mt-12 text-center text-gray-500 text-sm">
-            <p data-lang-key="copyright">&copy; 2024 Trình tạo hình ảnh Phật pháp AI. Bảo lưu mọi quyền.</p>
-            <p id="user-id-display" class="text-xs text-gray-400 mt-1"></p>
-            <button id="feedback-button" class="mt-2 text-indigo-500 hover:underline" data-lang-key="feedback-button">Gửi phản hồi</button>
-        </footer>
-    </div>
-
-    <!-- Nội dung trang Hồ sơ người dùng -->
-    <div id="profile-content" class="container bg-white p-8 rounded-3xl shadow-2xl border-2 border-indigo-100 hidden opacity-0">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-3xl font-bold text-indigo-800" data-lang-key="profile-title">Hồ sơ người dùng</h2>
-            <button id="back-to-app-button-from-profile" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
-                <i class="fa-solid fa-arrow-left mr-2"></i>
-                <span data-lang-key="back-to-app">Trở lại</span>
-            </button>
-        </div>
-        
-        <div class="mb-8">
-            <p class="text-gray-700"><strong data-lang-key="profile-email">Email:</strong> <span id="profile-email-display" class="font-medium"></span></p>
-            <p class="text-gray-700 text-sm"><strong data-lang-key="profile-id">User ID:</strong> <span id="profile-id-display" class="font-mono text-gray-500"></span></p>
-        </div>
-
-        <h3 class="text-2xl font-bold text-gray-800 mb-6" data-lang-key="saved-images-title">Hình ảnh đã lưu</h3>
-        <div id="saved-images-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            <!-- Saved images will be inserted here -->
-        </div>
-        <div id="saved-images-loading" class="text-center text-gray-500 mt-4 hidden">
-            <p>Đang tải hình ảnh đã lưu...</p>
+            <!-- Khu vực hiển thị lỗi -->
+            <div id="error-message" class="hidden mt-4 text-red-500 text-center"></div>
         </div>
     </div>
     
-    <!-- Nội dung trang Bộ sưu tập công khai -->
-    <div id="public-gallery-content" class="container bg-white p-8 rounded-3xl shadow-2xl border-2 border-indigo-100 hidden opacity-0">
-        <div class="flex justify-between items-center mb-8">
-            <h2 class="text-3xl font-bold text-blue-800" data-lang-key="public-gallery-title">Bộ sưu tập công khai</h2>
-            <button id="back-to-app-button-from-gallery" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors">
-                <i class="fa-solid fa-arrow-left mr-2"></i>
-                <span data-lang-key="back-to-app">Trở lại</span>
-            </button>
-        </div>
-        
-        <div id="public-images-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            <!-- Public images will be inserted here -->
-        </div>
-        <div id="public-images-loading" class="text-center text-gray-500 mt-4 hidden">
-            <p>Đang tải hình ảnh công khai...</p>
+    <!-- Phần hiển thị lịch sử -->
+    <div class="bg-white p-8 rounded-2xl shadow-xl max-w-3xl w-full">
+        <h2 class="text-2xl font-bold mb-4 text-gray-800" data-lang-key="historyTitle">
+            <i class="fa-solid fa-clock-rotate-left text-gray-500 mr-2"></i>Lịch Sử Hình Ảnh
+        </h2>
+        <!-- Lưới hiển thị lịch sử hình ảnh. -->
+        <div id="history-container" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            <p class="text-gray-500 text-center col-span-full" id="history-empty-message" data-lang-key="historyEmpty">Lịch sử trống.</p>
         </div>
     </div>
 
-    <!-- Modal phản hồi -->
-    <div id="feedback-modal" class="modal">
-        <div class="modal-content">
-            <h3 class="text-xl font-bold text-indigo-800 mb-4" data-lang-key="feedback-title">Gửi phản hồi cho chúng tôi</h3>
-            <p class="text-gray-600 mb-4" data-lang-key="feedback-description">Chúng tôi rất trân trọng ý kiến của bạn để cải thiện ứng dụng tốt hơn.</p>
-            <textarea id="feedback-textarea" rows="5" class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 resize-none" placeholder="Nhập phản hồi của bạn tại đây..."></textarea>
-            <div class="flex justify-end space-x-4 mt-4">
-                <button id="feedback-cancel" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors" data-lang-key="feedback-cancel">Hủy</button>
-                <button id="feedback-submit" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors" data-lang-key="feedback-submit">Gửi</button>
-            </div>
-            <p id="feedback-message" class="mt-4 text-center text-sm hidden"></p>
-        </div>
-    </div>
-    
-    <!-- Modal Đăng nhập/Đăng ký -->
-    <div id="auth-modal" class="modal show">
-        <div class="modal-content">
-            <h3 class="text-xl font-bold text-indigo-800 mb-4" data-lang-key="auth-title">Đăng nhập hoặc Đăng ký</h3>
-            <p id="auth-message" class="text-sm text-red-500 mb-4 hidden"></p>
-            <form id="auth-form" class="space-y-4">
-                <div>
-                    <label for="email-input" class="block text-sm font-medium text-gray-700" data-lang-key="email-label">Email:</label>
-                    <input type="email" id="email-input" class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Nhập email của bạn" required>
-                </div>
-                <div>
-                    <label for="password-input" class="block text-sm font-medium text-gray-700" data-lang-key="password-label">Mật khẩu:</label>
-                    <input type="password" id="password-input" class="mt-1 w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300" placeholder="Nhập mật khẩu của bạn" required>
-                </div>
-                <div class="flex justify-between items-center">
-                    <button type="button" id="register-button" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors" data-lang-key="register-button">Đăng ký</button>
-                    <button type="button" id="login-button" class="bg-indigo-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-indigo-600 transition-colors" data-lang-key="login-button">Đăng nhập</button>
-                </div>
-                <div class="flex items-center justify-center space-x-2">
-                    <hr class="flex-grow border-gray-300">
-                    <span class="text-gray-500 text-sm">hoặc</span>
-                    <hr class="flex-grow border-gray-300">
-                </div>
-                <button type="button" id="google-login-button" class="w-full bg-white border border-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors flex items-center justify-center space-x-2">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google logo" class="w-5 h-5">
-                    <span data-lang-key="google-login-button">Đăng nhập bằng Google</span>
-                </button>
-            </form>
-        </div>
-    </div>
-    
-    <!-- Modal Chỉnh sửa hình ảnh -->
-    <div id="edit-image-modal" class="modal">
-        <div class="modal-content !max-w-3xl">
-            <h3 class="text-xl font-bold text-indigo-800 mb-4" data-lang-key="image-editor-title">Chỉnh sửa hình ảnh</h3>
-            <div class="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4 mb-4">
-                <!-- Vùng canvas và công cụ -->
-                <div class="flex-grow flex flex-col items-center">
-                    <canvas id="edit-canvas" class="w-full h-auto max-h-[60vh] rounded-lg border-2 border-dashed border-gray-300"></canvas>
-                    
-                    <div class="flex justify-center flex-wrap gap-2 mt-4">
-                        <button id="grayscale-button" class="tool-button" data-lang-key="grayscale-button"><i class="fa-solid fa-palette mr-1"></i> Grayscale</button>
-                        <button id="brush-button" class="tool-button active" data-lang-key="brush-button"><i class="fa-solid fa-brush mr-1"></i> Vẽ</button>
-                        <input type="color" id="brush-color-picker" class="w-10 h-10 border-none rounded-lg p-0">
-                        <input type="range" id="brush-size-slider" min="1" max="20" value="5" class="w-20">
-                    </div>
-                </div>
-            </div>
-            
-            <div class="flex justify-end space-x-4 mt-4">
-                <button id="edit-cancel" class="bg-gray-200 text-gray-700 font-semibold py-2 px-4 rounded-lg hover:bg-gray-300 transition-colors" data-lang-key="feedback-cancel">Hủy</button>
-                <button id="edit-download" class="bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors" data-lang-key="download-edited-image"><i class="fa-solid fa-download mr-1"></i> Tải xuống</button>
-            </div>
-        </div>
-    </div>
+    <!-- Thông tin bản quyền -->
+    <footer class="mt-8 text-center text-gray-500 text-sm">
+        <p data-lang-key="copyrightText">© 2024 AI Image Generator. Mọi quyền được bảo lưu.</p>
+    </footer>
 
-    <!-- Modal hiển thị hình ảnh công khai và bình luận -->
-    <div id="public-image-modal" class="modal">
-        <div class="modal-content !max-w-3xl">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold text-blue-800" data-lang-key="public-image-details">Chi tiết hình ảnh</h3>
-                <button id="close-public-image-modal" class="text-gray-500 hover:text-gray-700"><i class="fa-solid fa-xmark text-xl"></i></button>
-            </div>
-            <img id="public-image-display" src="" alt="Public Image" class="w-full h-auto rounded-xl mb-4">
-            
-            <div class="flex items-center space-x-4 mb-4">
-                <button id="like-button" class="bg-red-100 text-red-700 font-semibold py-2 px-4 rounded-lg hover:bg-red-200 transition-colors">
-                    <i class="fa-solid fa-heart mr-2"></i>
-                    <span id="like-count">0</span>
-                </button>
-                <span class="text-gray-600 font-semibold" data-lang-key="shared-by">Được chia sẻ bởi:</span>
-                <span id="public-image-author" class="text-blue-700 font-medium"></span>
-            </div>
-            
-            <div class="comment-section">
-                <h4 class="font-bold text-lg text-gray-800 mb-2" data-lang-key="comments-title">Bình luận</h4>
-                <div id="comments-list" class="space-y-4 max-h-48 overflow-y-auto">
-                    <!-- Comments will be loaded here -->
-                </div>
-                <form id="comment-form" class="mt-4 flex space-x-2">
-                    <textarea id="comment-input" rows="1" class="flex-grow p-2 border rounded-lg resize-none" placeholder="Viết bình luận của bạn..."></textarea>
-                    <button type="submit" class="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 transition-colors" data-lang-key="comment-send">Gửi</button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Firebase SDK Imports -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, doc, setDoc, getDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Định nghĩa các bản dịch cho ứng dụng
-        const translations = {
-            vi: {
-                'welcome-title': 'Chào mừng đến với',
-                'title-welcome': 'Trình tạo hình ảnh Phật pháp',
-                'welcome-text': 'Ứng dụng đang tải, vui lòng chờ một chút...',
-                'title': 'Trình tạo hình ảnh Phật pháp',
-                'description': 'Nhập mô tả chi tiết, chọn phong cách và số lượng để AI tạo ra hình ảnh cho bạn.',
-                'background-label': 'Chọn hình nền:',
-                'bg-purple-blue': 'Gradient Xanh-Tím',
-                'bg-orange-pink': 'Bình Minh',
-                'bg-green-teal': 'Thiên Nhiên',
-                'bg-green-yellow': 'Gradient Xanh lá-Vàng',
-                'bg-gray-blue': 'Gradient Xám-Xanh',
-                'bg-white': 'Trắng tinh',
-                'bg-cream': 'Kem Nhẹ',
-                'prompt-label': 'Mô tả hình ảnh:',
-                'prompt-placeholder': 'Ví dụ: Một bức tượng Phật Thích Ca Mâu Ni thiền định dưới gốc cây Bồ đề vào lúc hoàng hôn, phong cách tranh thủy mặc...',
-                'style-label': 'Chọn phong cách:',
-                'style-hyper-realistic': 'Phong cách chân thực tuyệt đối',
-                'style-realistic': 'Phong cách hiện thực',
-                'style-inkwash': 'Tranh thủy mặc',
-                'style-fantasy': 'Nghệ thuật số giả tưởng',
-                'style-oil': 'Tranh sơn dầu',
-                'style-cartoon': 'Phong cách hoạt hình',
-                'style-anime': 'Phong cách Anime',
-                'style-watercolor': 'Tranh màu nước',
-                'style-pixel': 'Nghệ thuật Pixel',
-                'count-label': 'Số lượng hình ảnh:',
-                'generate-button': 'Tạo hình ảnh',
-                'loading-text': 'Đang tạo hình ảnh, vui lòng chờ...',
-                'results-title': 'Hình ảnh đã tạo:',
-                'copy-tooltip': 'Sao chép liên kết hình ảnh',
-                'error-prompt-empty': 'Vui lòng nhập mô tả để tạo hình ảnh.',
-                'error-api-failure': 'Không thể tạo hình ảnh. Vui lòng thử lại.',
-                'error-connection': 'Đã xảy ra lỗi khi kết nối với máy chủ. Vui lòng kiểm tra kết nối mạng và thử lại.',
-                'success-copy': 'Đã sao chép liên kết hình ảnh vào clipboard!',
-                'error-no-image-copy': 'Không có hình ảnh để sao chép.',
-                'copyright': '&copy; 2024 Trình tạo hình ảnh Phật pháp AI. Bảo lưu mọi quyền.',
-                'limit-text': 'Số lượt tạo hôm nay:',
-                'limit-reached': 'Bạn đã đạt giới hạn 5 lượt tạo hôm nay.',
-                'reset-timer': 'Giới hạn sẽ được làm mới sau',
-                'feedback-button': 'Gửi phản hồi',
-                'feedback-title': 'Gửi phản hồi cho chúng tôi',
-                'feedback-description': 'Chúng tôi rất trân trọng ý kiến của bạn để cải thiện ứng dụng tốt hơn.',
-                'feedback-placeholder': 'Nhập phản hồi của bạn tại đây...',
-                'feedback-cancel': 'Hủy',
-                'feedback-submit': 'Gửi',
-                'feedback-sent': 'Cảm ơn bạn! Phản hồi của bạn đã được gửi đi.',
-                'all-feedback-title': 'Phản hồi của người dùng',
-                'feedback-anonymous': 'Người dùng ẩn danh',
-                'feedback-time': 'Thời gian:',
-                'auth-title': 'Đăng nhập hoặc Đăng ký',
-                'email-label': 'Email:',
-                'password-label': 'Mật khẩu:',
-                'register-button': 'Đăng ký',
-                'login-button': 'Đăng nhập',
-                'signout-button': 'Đăng xuất',
-                'login-success': 'Đăng nhập thành công!',
-                'register-success': 'Đăng ký thành công! Vui lòng đăng nhập.',
-                'error-auth-invalid-email': 'Email không hợp lệ.',
-                'error-auth-wrong-password': 'Mật khẩu không đúng.',
-                'error-auth-user-not-found': 'Người dùng không tồn tại.',
-                'error-auth-weak-password': 'Mật khẩu phải có ít nhất 6 ký tự.',
-                'error-auth-email-already-in-use': 'Email này đã được sử dụng.',
-                'error-auth-default': 'Đã xảy ra lỗi. Vui lòng thử lại.',
-                'profile-button': 'Hồ sơ',
-                'profile-title': 'Hồ sơ người dùng',
-                'profile-email': 'Email:',
-                'profile-id': 'User ID:',
-                'back-to-app': 'Trở lại',
-                'saved-images-title': 'Hình ảnh đã lưu',
-                'save-button': 'Lưu',
-                'saved-button': 'Đã lưu',
-                'saving-image': 'Đang lưu...',
-                'image-save-success': 'Hình ảnh đã được lưu vào hồ sơ!',
-                'image-save-error': 'Lỗi khi lưu hình ảnh. Vui lòng thử lại.',
-                'google-login-button': 'Đăng nhập bằng Google',
-                'public-gallery': 'Bộ sưu tập công khai',
-                'public-gallery-title': 'Bộ sưu tập công khai',
-                'public-images-loading': 'Đang tải hình ảnh công khai...',
-                'share-publicly': 'Chia sẻ công khai',
-                'share-success': 'Hình ảnh đã được chia sẻ công khai!',
-                'share-error': 'Lỗi khi chia sẻ hình ảnh.',
-                'image-editor-title': 'Chỉnh sửa hình ảnh',
-                'grayscale-button': 'Grayscale',
-                'brush-button': 'Vẽ',
-                'download-edited-image': 'Tải xuống',
-                'edit-button': 'Chỉnh sửa',
-                'delete-button': 'Xóa',
-                'delete-confirm': 'Bạn có chắc chắn muốn xóa hình ảnh này không?',
-                'delete-success': 'Đã xóa hình ảnh!',
-                'delete-error': 'Lỗi khi xóa hình ảnh.',
-                'app-tab-button': 'Tạo hình ảnh',
-                'profile-tab-button': 'Hồ sơ',
-                'public-gallery-tab-button': 'Bộ sưu tập',
-                'no-saved-images': 'Bạn chưa lưu hình ảnh nào.',
-                'no-public-images': 'Chưa có hình ảnh nào được chia sẻ công khai.',
-                'public-image-details': 'Chi tiết hình ảnh',
-                'shared-by': 'Được chia sẻ bởi:',
-                'comments-title': 'Bình luận',
-                'comment-send': 'Gửi',
-                'like-success': 'Đã thích!',
-                'like-removed': 'Đã bỏ thích.',
-                'error-like': 'Lỗi khi thích hình ảnh.',
-                'comment-added': 'Đã thêm bình luận!',
-                'error-comment': 'Lỗi khi thêm bình luận.',
-            },
-            en: {
-                'welcome-title': 'Welcome to',
-                'title-welcome': 'Buddhist Image Generator',
-                'welcome-text': 'Application is loading, please wait a moment...',
-                'title': 'Buddhist Image Generator',
-                'description': 'Enter a detailed description, select a style and count to generate images with AI.',
-                'background-label': 'Select Background:',
-                'bg-purple-blue': 'Purple-Blue Gradient',
-                'bg-orange-pink': 'Sunrise Gradient',
-                'bg-green-teal': 'Nature Gradient',
-                'bg-green-yellow': 'Green-Yellow Gradient',
-                'bg-gray-blue': 'Gray-Blue Gradient',
-                'bg-white': 'Solid White',
-                'bg-cream': 'Solid Cream',
-                'prompt-label': 'Image Description:',
-                'prompt-placeholder': 'Example: A statue of Gautama Buddha meditating under a Bodhi tree at sunset, ink wash painting style...',
-                'style-label': 'Select Style:',
-                'style-hyper-realistic': 'Hyper-Realistic Style',
-                'style-realistic': 'Realistic painting',
-                'style-inkwash': 'Ink wash painting',
-                'style-fantasy': 'Fantasy digital art',
-                'style-oil': 'Oil painting',
-                'style-cartoon': 'Cartoon style',
-                'style-anime': 'Anime style',
-                'style-watercolor': 'Watercolor painting',
-                'style-pixel': 'Pixel art',
-                'count-label': 'Number of Images:',
-                'generate-button': 'Generate Image',
-                'loading-text': 'Generating image, please wait...',
-                'results-title': 'Generated Images:',
-                'copy-tooltip': 'Copy image link',
-                'error-prompt-empty': 'Please enter a description to generate an image.',
-                'error-api-failure': 'Could not generate image. Please try again.',
-                'error-connection': 'An error occurred while connecting to the server. Please check your network and try again.',
-                'success-copy': 'Image link copied to clipboard!',
-                'error-no-image-copy': 'No image to copy.',
-                'copyright': '&copy; 2024 Buddhist Image Generator AI. All rights reserved.',
-                'limit-text': 'Today\'s creations:',
-                'limit-reached': 'You have reached the daily limit of 5 creations.',
-                'reset-timer': 'The limit will be reset in',
-                'feedback-button': 'Send Feedback',
-                'feedback-title': 'Send us your feedback',
-                'feedback-description': 'We appreciate your feedback to make our app better.',
-                'feedback-placeholder': 'Enter your feedback here...',
-                'feedback-cancel': 'Cancel',
-                'feedback-submit': 'Submit',
-                'feedback-sent': 'Thank you! Your feedback has been sent.',
-                'all-feedback-title': 'User Feedback',
-                'feedback-anonymous': 'Anonymous user',
-                'feedback-time': 'Timestamp:',
-                'auth-title': 'Login or Register',
-                'email-label': 'Email:',
-                'password-label': 'Password:',
-                'register-button': 'Register',
-                'login-button': 'Login',
-                'signout-button': 'Sign out',
-                'login-success': 'Login successful!',
-                'register-success': 'Registration successful! Please log in.',
-                'error-auth-invalid-email': 'Invalid email.',
-                'error-auth-wrong-password': 'Wrong password.',
-                'error-auth-user-not-found': 'User not found.',
-                'error-auth-weak-password': 'Password should be at least 6 characters.',
-                'error-auth-email-already-in-use': 'This email is already in use.',
-                'error-auth-default': 'An error occurred. Please try again.',
-                'profile-button': 'Profile',
-                'profile-title': 'User Profile',
-                'profile-email': 'Email:',
-                'profile-id': 'User ID:',
-                'back-to-app': 'Back',
-                'saved-images-title': 'Saved Images',
-                'save-button': 'Save',
-                'saved-button': 'Saved',
-                'saving-image': 'Saving...',
-                'image-save-success': 'Image saved to profile!',
-                'image-save-error': 'Error saving image. Please try again.',
-                'google-login-button': 'Sign in with Google',
-                'public-gallery': 'Public Gallery',
-                'public-gallery-title': 'Public Gallery',
-                'public-images-loading': 'Loading public images...',
-                'share-publicly': 'Share Publicly',
-                'share-success': 'Image shared to public gallery!',
-                'share-error': 'Error sharing image.',
-                'image-editor-title': 'Image Editor',
-                'grayscale-button': 'Grayscale',
-                'brush-button': 'Brush',
-                'download-edited-image': 'Download',
-                'edit-button': 'Edit',
-                'delete-button': 'Delete',
-                'delete-confirm': 'Are you sure you want to delete this image?',
-                'delete-success': 'Image deleted!',
-                'delete-error': 'Error deleting image.',
-                'app-tab-button': 'Generate',
-                'profile-tab-button': 'Profile',
-                'public-gallery-tab-button': 'Gallery',
-                'no-saved-images': 'You have not saved any images yet.',
-                'no-public-images': 'No images have been shared publicly yet.',
-                'public-image-details': 'Image Details',
-                'shared-by': 'Shared by:',
-                'comments-title': 'Comments',
-                'comment-send': 'Send',
-                'like-success': 'Liked!',
-                'like-removed': 'Like removed.',
-                'error-like': 'Error liking image.',
-                'comment-added': 'Comment added!',
-                'error-comment': 'Error adding comment.',
-            }
-        };
-        
-        // --- CẤU HÌNH VÀ BIẾN TOÀN CỤC ---
-        const BACKGROUND_OPTIONS = {
-            'purple-blue': 'bg-gradient-purple-blue',
-            'orange-pink': 'bg-gradient-orange-pink',
-            'green-teal': 'bg-gradient-green-teal',
-            'green-yellow': 'bg-gradient-green-yellow',
-            'gray-blue': 'bg-gradient-gray-blue',
-            'white': 'bg-solid-white',
-            'cream': 'bg-solid-cream'
-        };
-        const DEFAULT_BACKGROUND = 'purple-blue';
-        const BACKGROUND_STORAGE_KEY = 'selectedBackground';
-
-        const DAILY_LIMIT = 5;
-        let dailyCount = 0;
-        let resetTime = 0;
-        let countdownInterval;
-        let activeTab = 'app-content';
-        let currentPublicImageId = null;
-
-        // Biến cho tính năng chỉnh sửa hình ảnh
-        let canvas, ctx, currentImage, isDrawing, lastX, lastY, brushColor, brushSize;
-        let isGrayscale = false;
-
-        // --- DOM REFERENCES ---
-        const welcomeScreen = document.getElementById('welcome-screen');
-        const appContent = document.getElementById('app-content');
-        const profileContent = document.getElementById('profile-content');
-        const publicGalleryContent = document.getElementById('public-gallery-content');
+    <script>
+        // Lấy các phần tử DOM cần thiết
+        const languageSelect = document.getElementById('language-select');
         const promptInput = document.getElementById('prompt-input');
-        const langSelect = document.getElementById('lang-select');
         const styleSelect = document.getElementById('style-select');
-        const countSelect = document.getElementById('count-select');
+        const aspectRatioSelect = document.getElementById('aspect-ratio-select');
         const generateButton = document.getElementById('generate-button');
         const loadingSpinner = document.getElementById('loading-spinner');
-        const imageResults = document.getElementById('image-results');
-        const imageGrid = document.getElementById('image-grid');
-        const messageBox = document.getElementById('message-box');
-        const currentCountEl = document.getElementById('current-count');
-        const dailyLimitEl = document.getElementById('daily-limit');
-        const resetTimerEl = document.getElementById('reset-timer');
-        const bgSelect = document.getElementById('bg-select');
-        const feedbackButton = document.getElementById('feedback-button');
-        const feedbackModal = document.getElementById('feedback-modal');
-        const feedbackCancelButton = document.getElementById('feedback-cancel');
-        const feedbackSubmitButton = document.getElementById('feedback-submit');
-        const feedbackTextarea = document.getElementById('feedback-textarea');
-        const feedbackMessage = document.getElementById('feedback-message');
-        const feedbackList = document.getElementById('feedback-list');
-        const feedbackLoading = document.getElementById('feedback-loading');
-        const userIdDisplay = document.getElementById('user-id-display');
-        const userEmailDisplay = document.getElementById('user-email-display');
-        const signoutButton = document.getElementById('signout-button');
-        const authModal = document.getElementById('auth-modal');
-        const authMessage = document.getElementById('auth-message');
-        const emailInput = document.getElementById('email-input');
-        const passwordInput = document.getElementById('password-input');
-        const loginButton = document.getElementById('login-button');
-        const registerButton = document.getElementById('register-button');
-        const googleLoginButton = document.getElementById('google-login-button');
-        const profileButton = document.getElementById('profile-button');
-        const publicGalleryButton = document.getElementById('public-gallery-button');
-        const backToAppButtonFromProfile = document.getElementById('back-to-app-button-from-profile');
-        const backToAppButtonFromGallery = document.getElementById('back-to-app-button-from-gallery');
-        const profileEmailDisplay = document.getElementById('profile-email-display');
-        const profileIdDisplay = document.getElementById('profile-id-display');
-        const savedImagesGrid = document.getElementById('saved-images-grid');
-        const savedImagesLoading = document.getElementById('saved-images-loading');
-        const publicImagesGrid = document.getElementById('public-images-grid');
-        const publicImagesLoading = document.getElementById('public-images-loading');
+        const generatedImage = document.getElementById('generated-image');
+        const downloadLink = document.getElementById('download-link');
+        const errorMessage = document.getElementById('error-message');
+        const historyContainer = document.getElementById('history-container');
+        const historyEmptyMessage = document.getElementById('history-empty-message');
 
-        // Tab buttons
-        const appTabButton = document.getElementById('app-tab-button');
-        const profileTabButton = document.getElementById('profile-tab-button');
-        const publicGalleryTabButton = document.getElementById('public-gallery-tab-button');
-        
-        // Image Editor Modal
-        const editImageModal = document.getElementById('edit-image-modal');
-        const editCanvas = document.getElementById('edit-canvas');
-        const grayscaleButton = document.getElementById('grayscale-button');
-        const brushButton = document.getElementById('brush-button');
-        const brushColorPicker = document.getElementById('brush-color-picker');
-        const brushSizeSlider = document.getElementById('brush-size-slider');
-        const editCancelButton = document.getElementById('edit-cancel');
-        const editDownloadButton = document.getElementById('edit-download');
-        
-        // Public Image Modal
-        const publicImageModal = document.getElementById('public-image-modal');
-        const closePublicImageModal = document.getElementById('close-public-image-modal');
-        const publicImageDisplay = document.getElementById('public-image-display');
-        const likeButton = document.getElementById('like-button');
-        const likeCountSpan = document.getElementById('like-count');
-        const publicImageAuthor = document.getElementById('public-image-author');
-        const commentsList = document.getElementById('comments-list');
-        const commentForm = document.getElementById('comment-form');
-        const commentInput = document.getElementById('comment-input');
-
-        // --- FIREBASE INITIALIZATION ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-
-        let app;
-        let db;
-        let auth;
-        let userId;
-
-        async function initializeFirebase() {
-            try {
-                if (Object.keys(firebaseConfig).length === 0) {
-                    console.error("Firebase config is missing. Authentication and data persistence will not work.");
-                    app = initializeApp({});
-                } else {
-                    app = initializeApp(firebaseConfig);
-                    db = getFirestore(app);
-                    auth = getAuth(app);
-                }
-                
-                onAuthStateChanged(auth, async (user) => {
-                    if (user) {
-                        userId = user.uid;
-                        userIdDisplay.textContent = `User ID: ${userId}`;
-                        userEmailDisplay.textContent = `Xin chào, ${user.email}!`;
-                        profileEmailDisplay.textContent = user.email;
-                        profileIdDisplay.textContent = userId;
-                        signoutButton.classList.remove('hidden');
-                        profileButton.classList.remove('hidden');
-                        publicGalleryButton.classList.remove('hidden');
-                        authModal.classList.remove('show');
-                        console.log("Firebase authenticated. User ID:", userId);
-                        
-                        if (db) {
-                           await fetchUserDailyCount();
-                           listenForFeedback();
-                           listenForSavedImages();
-                           listenForPublicImages();
-                        }
-                        showActiveTab();
-                    } else {
-                        userId = null;
-                        userIdDisplay.textContent = `User ID: Not logged in`;
-                        userEmailDisplay.textContent = '';
-                        profileEmailDisplay.textContent = '';
-                        profileIdDisplay.textContent = '';
-                        signoutButton.classList.add('hidden');
-                        profileButton.classList.add('hidden');
-                        publicGalleryButton.classList.add('hidden');
-                        authModal.classList.add('show');
-                        hideAllContent();
-                    }
-                });
-
-            } catch (error) {
-                console.error("Error initializing Firebase:", error);
+        // Đối tượng chứa các bản dịch
+        const translations = {
+            'vi': {
+                title: 'Tạo Hình Ảnh AI',
+                description: 'Nhập mô tả, chọn phong cách và tỷ lệ khung hình để tạo hình ảnh.',
+                promptPlaceholder: 'Ví dụ: Một chú mèo phi hành gia đang bay trong vũ trụ, phong cách hoạt hình',
+                styleLabel: 'Phong cách',
+                defaultStyle: 'Mặc định',
+                cartoonStyle: 'Hoạt hình',
+                oilPaintingStyle: 'Sơn dầu',
+                realisticStyle: 'Nhiếp ảnh thực tế',
+                digitalArtStyle: 'Nghệ thuật số',
+                pencilDrawingStyle: 'Vẽ chì',
+                aspectRatioLabel: 'Tỷ lệ khung hình',
+                generateButton: 'Tạo Hình Ảnh',
+                loadingMessage: 'Đang tạo hình ảnh...',
+                downloadButton: 'Tải Xuống',
+                errorPrompt: 'Vui lòng nhập mô tả để tạo hình ảnh.',
+                errorApi: 'Không thể tạo hình ảnh:',
+                errorHistory: 'Không thể lưu lịch sử hình ảnh.',
+                historyTitle: 'Lịch Sử Hình Ảnh',
+                historyEmpty: 'Lịch sử trống.',
+                copyrightText: '© 2024 AI Image Generator. Mọi quyền được bảo lưu.',
+                creatingText: 'Đang tạo...'
+            },
+            'en': {
+                title: 'AI Image Generator',
+                description: 'Enter a description, choose a style and aspect ratio to generate an image.',
+                promptPlaceholder: 'Example: An astronaut cat flying in space, cartoon style',
+                styleLabel: 'Style',
+                defaultStyle: 'Default',
+                cartoonStyle: 'Cartoon',
+                oilPaintingStyle: 'Oil Painting',
+                realisticStyle: 'Realistic Photo',
+                digitalArtStyle: 'Digital Art',
+                pencilDrawingStyle: 'Pencil Drawing',
+                aspectRatioLabel: 'Aspect Ratio',
+                generateButton: 'Generate Image',
+                loadingMessage: 'Generating image...',
+                downloadButton: 'Download',
+                errorPrompt: 'Please enter a description to generate an image.',
+                errorApi: 'Failed to generate image:',
+                errorHistory: 'Failed to save image history.',
+                historyTitle: 'Image History',
+                historyEmpty: 'History is empty.',
+                copyrightText: '© 2024 AI Image Generator. All rights reserved.',
+                creatingText: 'Generating...'
             }
-        }
-        
-        async function fetchUserDailyCount() {
-            if (!db || !userId) return;
+        };
 
-            const userDocRef = doc(db, 'artifacts', appId, 'users', userId);
-            try {
-                const userDocSnap = await getDoc(userDocRef);
-                const now = new Date();
-                
-                if (userDocSnap.exists()) {
-                    const userData = userDocSnap.data();
-                    const lastResetTime = userData.lastResetTime?.toDate();
-                    
-                    if (lastResetTime && (now - lastResetTime) > (24 * 60 * 60 * 1000)) {
-                        dailyCount = 0;
-                        resetTime = now.getTime() + (24 * 60 * 60 * 1000);
-                        await setDoc(userDocRef, { dailyCount: 0, lastResetTime: serverTimestamp() }, { merge: true });
-                    } else {
-                        dailyCount = userData.dailyCount || 0;
-                        resetTime = lastResetTime ? lastResetTime.getTime() + (24 * 60 * 60 * 1000) : now.getTime() + (24 * 60 * 60 * 1000);
-                    }
-                } else {
-                    dailyCount = 0;
-                    resetTime = now.getTime() + (24 * 60 * 60 * 1000);
-                    await setDoc(userDocRef, { dailyCount: 0, lastResetTime: serverTimestamp(), email: auth.currentUser.email });
-                }
-
-                updateDailyLimitUI();
-                startCountdown();
-            } catch (e) {
-                console.error("Error fetching user data:", e);
-            }
-        }
-        
-        async function updateDailyCountInFirestore() {
-            if (!db || !userId) return;
-            const userDocRef = doc(db, 'artifacts', appId, 'users', userId);
-            try {
-                dailyCount++;
-                await setDoc(userDocRef, { dailyCount: dailyCount }, { merge: true });
-                updateDailyLimitUI();
-            } catch (e) {
-                console.error("Error updating daily count:", e);
-            }
-        }
-
-        function hideAllContent() {
-            appContent.classList.add('hidden', 'opacity-0');
-            profileContent.classList.add('hidden', 'opacity-0');
-            publicGalleryContent.classList.add('hidden', 'opacity-0');
-            appTabButton.classList.remove('active');
-            profileTabButton.classList.remove('active');
-            publicGalleryTabButton.classList.remove('active');
-        }
-
-        function showActiveTab() {
-            hideAllContent();
-            if (activeTab === 'app-content') {
-                appContent.classList.remove('hidden', 'opacity-0');
-                appContent.classList.add('fade-in');
-                appTabButton.classList.add('active');
-            } else if (activeTab === 'profile-content') {
-                profileContent.classList.remove('hidden', 'opacity-0');
-                profileContent.classList.add('fade-in');
-                profileTabButton.classList.add('active');
-            } else if (activeTab === 'public-gallery-content') {
-                publicGalleryContent.classList.remove('hidden', 'opacity-0');
-                publicGalleryContent.classList.add('fade-in');
-                publicGalleryTabButton.classList.add('active');
-            }
-        }
-
-        function listenForFeedback() {
-            const feedbackCollection = collection(db, 'artifacts', appId, 'public', 'data', 'feedback');
-            feedbackLoading.classList.remove('hidden');
-
-            onSnapshot(feedbackCollection, (snapshot) => {
-                feedbackList.innerHTML = '';
-                snapshot.forEach((doc) => {
-                    const data = doc.data();
-                    const feedbackCard = createFeedbackCard(data);
-                    feedbackList.prepend(feedbackCard);
-                });
-                feedbackLoading.classList.add('hidden');
-            }, (error) => {
-                console.error("Error listening for feedback:", error);
-                feedbackLoading.classList.add('hidden');
-            });
-        }
-        
-        function listenForSavedImages() {
-            if (!db || !userId) return;
-            const savedImagesCollection = collection(db, 'artifacts', appId, 'users', userId, 'savedImages');
-            savedImagesLoading.classList.remove('hidden');
-            onSnapshot(savedImagesCollection, (snapshot) => {
-                savedImagesGrid.innerHTML = '';
-                if (snapshot.empty) {
-                    savedImagesGrid.innerHTML = `<p class="text-center text-gray-500 col-span-full" data-lang-key="no-saved-images">Bạn chưa lưu hình ảnh nào.</p>`;
-                } else {
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const imageCard = createSavedImageCard(doc.id, data.imageUrl);
-                        savedImagesGrid.appendChild(imageCard);
-                    });
-                }
-                savedImagesLoading.classList.add('hidden');
-            }, (error) => {
-                console.error("Error listening for saved images:", error);
-                savedImagesLoading.classList.add('hidden');
-            });
-        }
-
-        function listenForPublicImages() {
-            if (!db) return;
-            const publicImagesCollection = collection(db, 'artifacts', appId, 'public', 'data', 'sharedImages');
-            publicImagesLoading.classList.remove('hidden');
-            onSnapshot(publicImagesCollection, (snapshot) => {
-                publicImagesGrid.innerHTML = '';
-                if (snapshot.empty) {
-                     publicImagesGrid.innerHTML = `<p class="text-center text-gray-500 col-span-full" data-lang-key="no-public-images">Chưa có hình ảnh nào được chia sẻ công khai.</p>`;
-                } else {
-                    snapshot.forEach(doc => {
-                        const data = doc.data();
-                        const imageCard = createPublicImageCard(doc.id, data);
-                        publicImagesGrid.appendChild(imageCard);
-                    });
-                }
-                publicImagesLoading.classList.add('hidden');
-            }, (error) => {
-                console.error("Error listening for public images:", error);
-                publicImagesLoading.classList.add('hidden');
-            });
-        }
-
-        function createFeedbackCard(data) {
-            const card = document.createElement('div');
-            card.className = 'feedback-card';
-            
-            const timestamp = data.timestamp ? new Date(data.timestamp.toDate()).toLocaleString() : 'N/A';
-            const username = data.email || translations[langSelect.value]['feedback-anonymous'];
-            const content = data.feedback || '';
-
-            card.innerHTML = `
-                <div class="flex justify-between items-center mb-2">
-                    <span class="font-bold text-indigo-800">${username}</span>
-                    <span class="text-xs text-gray-500">${timestamp}</span>
-                </div>
-                <p class="text-gray-700">${content}</p>
-            `;
-            return card;
-        }
-
-        function createSavedImageCard(docId, imageUrl) {
-            const card = document.createElement('div');
-            card.className = 'relative group rounded-xl shadow-md';
-            card.innerHTML = `
-                <img src="${imageUrl}" alt="Saved Buddhist image" class="w-full h-auto rounded-xl">
-                <div class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-xl">
-                    <button data-id="${docId}" data-url="${imageUrl}" class="edit-btn text-white p-2 rounded-full hover:bg-gray-700 transition-colors" title="${translations[langSelect.value]['edit-button']}"><i class="fa-solid fa-pen-to-square"></i></button>
-                    <button data-id="${docId}" data-url="${imageUrl}" class="share-btn text-white p-2 rounded-full hover:bg-gray-700 transition-colors" title="${translations[langSelect.value]['share-publicly']}"><i class="fa-solid fa-share-nodes"></i></button>
-                    <button data-id="${docId}" data-url="${imageUrl}" class="delete-btn text-white p-2 rounded-full hover:bg-gray-700 transition-colors" title="${translations[langSelect.value]['delete-button']}"><i class="fa-solid fa-trash"></i></button>
-                </div>
-            `;
-            
-            card.querySelector('.edit-btn').addEventListener('click', () => openImageEditor(imageUrl));
-            card.querySelector('.share-btn').addEventListener('click', (e) => shareImagePublicly(e.target.closest('button').dataset.url));
-            card.querySelector('.delete-btn').addEventListener('click', (e) => deleteSavedImage(e.target.closest('button').dataset.id));
-            
-            return card;
-        }
-        
-        function createPublicImageCard(docId, data) {
-             const card = document.createElement('div');
-             card.className = 'relative group rounded-xl shadow-md cursor-pointer';
-             card.innerHTML = `
-                <img src="${data.imageUrl}" alt="Public Buddhist image" class="w-full h-auto rounded-xl">
-                <div class="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black to-transparent rounded-b-xl">
-                    <p class="text-white text-sm font-semibold">${data.email || 'Người dùng ẩn danh'}</p>
-                </div>
-             `;
-             card.addEventListener('click', () => openPublicImageModal(docId, data));
-             return card;
-        }
-
+        // Hàm cập nhật ngôn ngữ trên toàn bộ ứng dụng
         function updateLanguage(lang) {
             const elements = document.querySelectorAll('[data-lang-key]');
             elements.forEach(el => {
                 const key = el.getAttribute('data-lang-key');
-                const translation = translations[lang][key];
-                if (translation) {
-                    if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
-                        el.placeholder = translation;
-                    } else if (el.tagName === 'OPTION') {
-                         el.textContent = translation;
-                    } else {
-                        el.innerHTML = translation;
-                    }
+                if (key) {
+                    el.textContent = translations[lang][key];
                 }
             });
-            promptInput.placeholder = translations[lang]['prompt-placeholder'];
-            feedbackTextarea.placeholder = translations[lang]['feedback-placeholder'];
-            commentInput.placeholder = translations[lang]['comment-send'];
-            updateDailyLimitUI();
-        }
 
-        function showMessage(messageKey, type = 'info') {
-            const lang = langSelect.value;
-            const message = translations[lang][messageKey] || messageKey;
-            messageBox.textContent = message;
-            messageBox.className = 'mt-6 text-center p-3 rounded-xl text-sm transition-all duration-300';
-            if (type === 'error') {
-                messageBox.classList.add('bg-red-100', 'text-red-700', 'block');
-            } else if (type === 'success') {
-                messageBox.classList.add('bg-green-100', 'text-green-700', 'block');
+            // Cập nhật placeholder và text cho nút
+            promptInput.placeholder = translations[lang].promptPlaceholder;
+            if (generateButton.disabled) {
+                generateButton.textContent = translations[lang].creatingText;
             } else {
-                messageBox.classList.add('bg-gray-100', 'text-gray-700', 'block');
+                generateButton.innerHTML = `<i class="fa-solid fa-magic-wand-sparkles mr-2"></i><span>${translations[lang].generateButton}</span>`;
             }
-            // Tự động ẩn sau 5 giây
-            setTimeout(() => {
-                messageBox.classList.add('hidden');
-            }, 5000);
-        }
-        
-        function showAuthMessage(messageKey) {
-            const lang = langSelect.value;
-            const message = translations[lang][messageKey] || messageKey;
-            authMessage.textContent = message;
-            authMessage.classList.remove('hidden');
+            if (downloadLink.classList.contains('hidden')) {
+                // Không làm gì nếu nút tải xuống đang ẩn
+            } else {
+                downloadLink.innerHTML = `<i class="fa-solid fa-download mr-2"></i><span>${translations[lang].downloadButton}</span>`;
+            }
+
+            // Cập nhật các option trong select box
+            const styleOptions = styleSelect.querySelectorAll('option');
+            styleOptions[0].textContent = translations[lang].defaultStyle;
+            styleOptions[1].textContent = translations[lang].cartoonStyle;
+            styleOptions[2].textContent = translations[lang].oilPaintingStyle;
+            styleOptions[3].textContent = translations[lang].realisticStyle;
+            styleOptions[4].textContent = translations[lang].digitalArtStyle;
+            styleOptions[5].textContent = translations[lang].pencilDrawingStyle;
         }
 
-        async function fetchWithExponentialBackoff(fetcher, retries = 5, delay = 1000) {
-            try {
-                return await fetcher();
-            } catch (error) {
-                if (retries > 0) {
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    return fetchWithExponentialBackoff(fetcher, retries - 1, delay * 2);
-                } else {
-                    throw error;
+        // Lắng nghe sự kiện thay đổi ngôn ngữ
+        languageSelect.addEventListener('change', (e) => {
+            updateLanguage(e.target.value);
+        });
+
+        // Lắng nghe trạng thái xác thực Firebase và tải lịch sử
+        window.addEventListener('load', () => {
+            updateLanguage('vi'); // Cập nhật ngôn ngữ mặc định là tiếng Việt khi tải trang
+            const checkAuthAndLoad = setInterval(() => {
+                if (window.firebaseApp && window.firebaseApp.isAuthReady()) {
+                    clearInterval(checkAuthAndLoad);
+                    setupHistoryListener();
                 }
-            }
+            }, 100);
+        });
+
+        // Thiết lập listener cho lịch sử hình ảnh trong Firestore
+        function setupHistoryListener() {
+            const db = window.firebaseApp.db;
+            const userId = window.firebaseApp.getUserId();
+            if (!userId) return;
+
+            const historyRef = collection(db, `artifacts/${appId}/users/${userId}/image_history`);
+            const q = query(historyRef, orderBy("timestamp", "desc"));
+            onSnapshot(q, (snapshot) => {
+                historyContainer.innerHTML = '';
+                if (snapshot.empty) {
+                    historyEmptyMessage.classList.remove('hidden');
+                } else {
+                    historyEmptyMessage.classList.add('hidden');
+                    snapshot.forEach(doc => {
+                        const data = doc.data();
+                        renderHistoryItem(data);
+                    });
+                }
+            });
         }
-        
-        function createImageCard(imageUrl) {
-            const card = document.createElement('div');
-            card.className = 'relative group rounded-xl shadow-md hover:shadow-xl transition-shadow duration-300';
+
+        // Tạo và hiển thị một mục lịch sử
+        function renderHistoryItem(data) {
+            const container = document.createElement('div');
+            container.className = 'relative group cursor-pointer';
 
             const img = document.createElement('img');
-            img.src = imageUrl;
-            img.alt = 'Generated Buddhist image by AI';
-            img.className = 'w-full h-auto rounded-xl';
-            
-            const copyButton = document.createElement('button');
-            copyButton.className = 'absolute top-4 right-16 bg-white text-gray-800 p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 transform hover:scale-110';
-            copyButton.title = translations[langSelect.value]['copy-tooltip'];
-            copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-            </svg>`;
+            img.src = data.imageData;
+            img.alt = data.prompt;
+            img.className = 'w-full h-32 object-cover rounded-lg transition-transform transform group-hover:scale-105';
 
-            const saveButton = document.createElement('button');
-            saveButton.className = 'save-button absolute top-4 right-4 bg-white text-gray-800 p-2 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 transform hover:scale-110';
-            saveButton.title = translations[langSelect.value]['save-button'];
-            saveButton.innerHTML = `<i class="fa-solid fa-bookmark h-6 w-6"></i>`;
+            const overlay = document.createElement('div');
+            overlay.className = 'absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-lg';
             
-            copyButton.addEventListener('click', () => {
-                const el = document.createElement('textarea');
-                el.value = imageUrl;
-                document.body.appendChild(el);
-                el.select();
-                document.execCommand('copy');
-                document.body.removeChild(el);
-                showMessage('success-copy', 'success');
-            });
+            const promptText = document.createElement('p');
+            promptText.className = 'text-white text-xs p-2 text-center';
+            promptText.textContent = data.prompt;
 
-            saveButton.addEventListener('click', async () => {
-                if (!db || !userId) {
-                    showMessage('error-auth-default', 'error');
-                    return;
-                }
-                saveButton.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i>`;
-                saveButton.disabled = true;
+            overlay.appendChild(promptText);
+            container.appendChild(img);
+            container.appendChild(overlay);
 
-                try {
-                    const savedImagesCollection = collection(db, 'artifacts', appId, 'users', userId, 'savedImages');
-                    await addDoc(savedImagesCollection, {
-                        imageUrl: imageUrl,
-                        timestamp: serverTimestamp()
-                    });
-                    
-                    saveButton.innerHTML = `<i class="fa-solid fa-check h-6 w-6"></i>`;
-                    saveButton.classList.add('saved');
-                    saveButton.title = translations[langSelect.value]['saved-button'];
-                    showMessage('image-save-success', 'success');
-                } catch (e) {
-                    console.error("Error saving image:", e);
-                    saveButton.innerHTML = `<i class="fa-solid fa-xmark h-6 w-6"></i>`;
-                    saveButton.classList.remove('saved');
-                    showMessage('image-save-error', 'error');
-                } finally {
-                     saveButton.disabled = false;
-                }
-            });
-            
-            card.appendChild(img);
-            card.appendChild(copyButton);
-            card.appendChild(saveButton);
-            
-            return card;
+            historyContainer.appendChild(container);
         }
 
-        async function generateImages(prompt, style, count) {
-            if (dailyCount >= DAILY_LIMIT) {
-                showMessage('limit-reached', 'info');
-                generateButton.disabled = true;
-                return;
-            }
+        // Hàm lưu hình ảnh vào Firestore
+        async function saveImageToHistory(prompt, imageData, style, aspectRatio) {
+            const db = window.firebaseApp.db;
+            const userId = window.firebaseApp.getUserId();
             if (!userId) {
-                showAuthMessage(translations[langSelect.value]['error-auth-default']);
+                console.error("Không thể lưu lịch sử: userId không xác định.");
                 return;
             }
 
+            const historyRef = collection(db, `artifacts/${appId}/users/${userId}/image_history`);
             try {
-                loadingSpinner.classList.remove('hidden');
-                imageResults.classList.add('hidden');
-                messageBox.classList.add('hidden');
-                imageGrid.innerHTML = '';
+                await setDoc(doc(historyRef), {
+                    prompt,
+                    imageData,
+                    style,
+                    aspectRatio,
+                    timestamp: serverTimestamp()
+                });
+            } catch (e) {
+                console.error("Lỗi khi thêm tài liệu vào Firestore: ", e);
+                errorMessage.textContent = translations[languageSelect.value].errorHistory;
+                errorMessage.classList.remove('hidden');
+            }
+        }
+        
+        // Hàm để resize/crop hình ảnh bằng Canvas
+        function resizeImage(base64, aspectRatio) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    const [targetWidthRatio, targetHeightRatio] = aspectRatio.split(':').map(Number);
+                    
+                    let newWidth, newHeight, x = 0, y = 0;
+                    
+                    const imageAspectRatio = img.width / img.height;
+                    const targetAspectRatio = targetWidthRatio / targetHeightRatio;
 
-                const finalPrompt = `${prompt}, ${style}`;
+                    if (imageAspectRatio > targetAspectRatio) {
+                        newHeight = img.height;
+                        newWidth = img.height * targetAspectRatio;
+                        x = (img.width - newWidth) / 2;
+                    } else {
+                        newWidth = img.width;
+                        newHeight = img.width / targetAspectRatio;
+                        y = (img.height - newHeight) / 2;
+                    }
 
-                const payload = {
-                    instances: [{ prompt: finalPrompt }],
-                    parameters: { "sampleCount": parseInt(count) }
+                    canvas.width = newWidth;
+                    canvas.height = newHeight;
+
+                    ctx.drawImage(img, x, y, newWidth, newHeight, 0, 0, newWidth, newHeight);
+
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.src = base64;
+            });
+        }
+
+        // Thêm trình lắng nghe sự kiện cho nút Tạo Hình Ảnh
+        generateButton.addEventListener('click', async () => {
+            let prompt = promptInput.value.trim();
+            const selectedStyle = styleSelect.value;
+            const selectedAspectRatio = aspectRatioSelect.value;
+            const lang = languageSelect.value;
+
+            if (!prompt) {
+                errorMessage.textContent = translations[lang].errorPrompt;
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+
+            // Gắn phong cách vào prompt
+            if (selectedStyle) {
+                prompt += selectedStyle;
+            }
+
+            // Ẩn các phần tử trước đó và hiển thị spinner
+            generatedImage.classList.add('hidden');
+            downloadLink.classList.add('hidden');
+            errorMessage.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            generateButton.disabled = true;
+            generateButton.innerHTML = `<i class="fa-solid fa-magic-wand-sparkles mr-2"></i><span data-lang-key="creatingText">${translations[lang].creatingText}</span>`;
+
+            let retryCount = 0;
+            const maxRetries = 3;
+            const initialDelay = 1000;
+
+            const fetchWithRetry = async () => {
+                const payload = { 
+                    instances: { prompt: prompt }, 
+                    parameters: { "sampleCount": 1 } 
                 };
                 const apiKey = "";
                 const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
 
-                const fetcher = () => fetch(apiUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-
-                const response = await fetchWithExponentialBackoff(fetcher);
-                const result = await response.json();
-
-                if (result.predictions && result.predictions.length > 0) {
-                    result.predictions.forEach(prediction => {
-                        if (prediction.bytesBase64Encoded) {
-                            const imageUrl = `data:image/png;base64,${prediction.bytesBase64Encoded}`;
-                            const card = createImageCard(imageUrl);
-                            imageGrid.appendChild(card);
-                        }
-                    });
-                    imageResults.classList.remove('hidden');
-                    
-                    await updateDailyCountInFirestore();
-
-                } else {
-                    showMessage('error-api-failure', 'error');
-                    console.error('API response error:', result);
-                }
-            } catch (error) {
-                showMessage('error-connection', 'error');
-                console.error('Error during image generation:', error);
-            } finally {
-                loadingSpinner.classList.add('hidden');
-                generateButton.disabled = false;
-            }
-        }
-
-        function updateDailyLimitUI() {
-            const lang = langSelect.value;
-            currentCountEl.textContent = dailyCount;
-            dailyLimitEl.textContent = DAILY_LIMIT;
-            
-            if (dailyCount >= DAILY_LIMIT) {
-                generateButton.disabled = true;
-                generateButton.classList.add('opacity-50', 'cursor-not-allowed');
-                showMessage('limit-reached', 'info');
-            } else {
-                generateButton.disabled = false;
-                generateButton.classList.remove('opacity-50', 'cursor-not-allowed');
-                if (messageBox.textContent.includes(translations[lang]['limit-reached'])) {
-                    messageBox.classList.add('hidden');
-                }
-            }
-        }
-        
-        function startCountdown() {
-            clearInterval(countdownInterval);
-            countdownInterval = setInterval(() => {
-                const now = new Date().getTime();
-                const distance = resetTime - now;
-                const lang = langSelect.value;
-                
-                if (distance < 0) {
-                    fetchUserDailyCount();
-                    resetTimerEl.textContent = `${translations[lang]['reset-timer']}: 24h 0m 0s`;
-                } else {
-                    const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                    const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                    const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                    resetTimerEl.textContent = `${translations[lang]['reset-timer']}: ${hours}h ${minutes}m ${seconds}s`;
-                }
-            }, 1000);
-        }
-
-        function applyBackground(bgId) {
-            const body = document.body;
-            const welcome = document.getElementById('welcome-screen');
-            const bgClass = BACKGROUND_OPTIONS[bgId] || BACKGROUND_OPTIONS[DEFAULT_BACKGROUND];
-            const isGradient = bgClass.includes('gradient');
-            
-            Object.values(BACKGROUND_OPTIONS).forEach(cls => {
-                body.classList.remove(cls);
-                welcome.classList.remove(cls);
-            });
-            body.classList.remove('animate-background');
-            welcome.classList.remove('animate-background');
-
-            body.classList.add(bgClass);
-            welcome.classList.add(bgClass);
-            
-            if (isGradient) {
-                body.classList.add('animate-background');
-                welcome.classList.add('animate-background');
-            }
-            
-            if (bgSelect.value !== bgId) {
-                 bgSelect.value = bgId;
-            }
-            
-            localStorage.setItem(BACKGROUND_STORAGE_KEY, bgId);
-        }
-
-        async function shareImagePublicly(imageUrl) {
-            if (!db || !userId) {
-                showMessage('error-auth-default', 'error');
-                return;
-            }
-            try {
-                const sharedImagesCollection = collection(db, 'artifacts', appId, 'public', 'data', 'sharedImages');
-                await addDoc(sharedImagesCollection, {
-                    imageUrl: imageUrl,
-                    userId: userId,
-                    email: auth.currentUser.email,
-                    likes: [],
-                    timestamp: serverTimestamp()
-                });
-                showMessage('share-success', 'success');
-            } catch (e) {
-                console.error("Error sharing image:", e);
-                showMessage('share-error', 'error');
-            }
-        }
-        
-        async function deleteSavedImage(docId) {
-            if (!db || !userId) {
-                showMessage('error-auth-default', 'error');
-                return;
-            }
-            const confirmed = confirm(translations[langSelect.value]['delete-confirm']);
-            if (!confirmed) return;
-
-            try {
-                const docRef = doc(db, 'artifacts', appId, 'users', userId, 'savedImages', docId);
-                await deleteDoc(docRef);
-                showMessage('delete-success', 'success');
-            } catch (e) {
-                console.error("Error deleting image:", e);
-                showMessage('delete-error', 'error');
-            }
-        }
-        
-        function openImageEditor(imageUrl) {
-            editImageModal.classList.add('show');
-            
-            // Đặt lại trạng thái của công cụ chỉnh sửa
-            isDrawing = false;
-            brushColor = '#000000';
-            brushSize = 5;
-            isGrayscale = false;
-            
-            const img = new Image();
-            img.onload = () => {
-                currentImage = img;
-                const ratio = img.width / img.height;
-                const maxWidth = window.innerWidth * 0.8;
-                const maxHeight = window.innerHeight * 0.6;
-                let newWidth = maxWidth;
-                let newHeight = newWidth / ratio;
-                
-                if (newHeight > maxHeight) {
-                    newHeight = maxHeight;
-                    newWidth = newHeight * ratio;
-                }
-                
-                editCanvas.width = newWidth;
-                editCanvas.height = newHeight;
-                
-                ctx = editCanvas.getContext('2d');
-                ctx.drawImage(currentImage, 0, 0, newWidth, newHeight);
-            };
-            img.src = imageUrl;
-        }
-
-        function applyGrayscale() {
-            if (!ctx || !currentImage) return;
-            
-            if (isGrayscale) {
-                // Đặt lại hình ảnh gốc
-                ctx.drawImage(currentImage, 0, 0, editCanvas.width, editCanvas.height);
-                isGrayscale = false;
-                grayscaleButton.classList.remove('active');
-            } else {
-                const imageData = ctx.getImageData(0, 0, editCanvas.width, editCanvas.height);
-                const data = imageData.data;
-                for (let i = 0; i < data.length; i += 4) {
-                    const avg = (data[i] + data[i + 1] + data[i + 2]) / 3;
-                    data[i] = avg;     // red
-                    data[i + 1] = avg; // green
-                    data[i + 2] = avg; // blue
-                }
-                ctx.putImageData(imageData, 0, 0);
-                isGrayscale = true;
-                grayscaleButton.classList.add('active');
-            }
-        }
-
-        function startDrawing(e) {
-            isDrawing = true;
-            [lastX, lastY] = [e.offsetX, e.offsetY];
-        }
-
-        function draw(e) {
-            if (!isDrawing || !ctx) return;
-            ctx.beginPath();
-            ctx.moveTo(lastX, lastY);
-            ctx.lineTo(e.offsetX, e.offsetY);
-            ctx.strokeStyle = brushColor;
-            ctx.lineWidth = brushSize;
-            ctx.lineCap = 'round';
-            ctx.stroke();
-            [lastX, lastY] = [e.offsetX, e.offsetY];
-        }
-        
-        function stopDrawing() {
-            isDrawing = false;
-        }
-
-        function downloadEditedImage() {
-            if (!editCanvas) return;
-            const link = document.createElement('a');
-            link.download = `edited-image-${Date.now()}.png`;
-            link.href = editCanvas.toDataURL();
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function openPublicImageModal(docId, data) {
-            publicImageModal.classList.add('show');
-            publicImageDisplay.src = data.imageUrl;
-            publicImageAuthor.textContent = data.email || translations[langSelect.value]['feedback-anonymous'];
-            likeCountSpan.textContent = data.likes?.length || 0;
-            
-            currentPublicImageId = docId;
-            
-            updateLikeButtonState(data.likes || []);
-            listenForComments(docId);
-        }
-        
-        function updateLikeButtonState(likes) {
-            if (userId && likes.includes(userId)) {
-                likeButton.classList.add('bg-red-500', 'text-white');
-                likeButton.classList.remove('bg-red-100', 'text-red-700');
-            } else {
-                 likeButton.classList.remove('bg-red-500', 'text-white');
-                likeButton.classList.add('bg-red-100', 'text-red-700');
-            }
-        }
-        
-        function listenForComments(docId) {
-            const commentsCollection = collection(db, 'artifacts', appId, 'public', 'data', 'sharedImages', docId, 'comments');
-            onSnapshot(commentsCollection, (snapshot) => {
-                commentsList.innerHTML = '';
-                snapshot.forEach(doc => {
-                    const data = doc.data();
-                    const commentElement = document.createElement('div');
-                    commentElement.className = 'border-b last:border-b-0 py-2';
-                    commentElement.innerHTML = `
-                        <p class="font-semibold text-gray-800">${data.email || 'Người dùng ẩn danh'}</p>
-                        <p class="text-gray-700">${data.comment}</p>
-                    `;
-                    commentsList.appendChild(commentElement);
-                });
-            });
-        }
-        
-        // --- LISTENERS SỰ KIỆN ---
-
-        bgSelect.addEventListener('change', (event) => {
-            applyBackground(event.target.value);
-        });
-
-        generateButton.addEventListener('click', async () => {
-            const prompt = promptInput.value.trim();
-            const style = styleSelect.value;
-            const count = countSelect.value;
-            
-            if (!prompt) {
-                showMessage('error-prompt-empty', 'info');
-                return;
-            }
-            generateButton.disabled = true;
-            await generateImages(prompt, style, count);
-        });
-
-        langSelect.addEventListener('change', (event) => {
-            updateLanguage(event.target.value);
-        });
-
-        feedbackButton.addEventListener('click', () => {
-            feedbackModal.classList.add('show');
-            feedbackTextarea.value = '';
-            feedbackMessage.classList.add('hidden');
-        });
-
-        feedbackCancelButton.addEventListener('click', () => {
-            feedbackModal.classList.remove('show');
-        });
-
-        feedbackSubmitButton.addEventListener('click', async () => {
-            const feedback = feedbackTextarea.value.trim();
-            const userEmail = auth.currentUser?.email || 'anonymous';
-            
-            if (!feedback) {
-                feedbackMessage.textContent = 'Vui lòng nhập phản hồi của bạn.';
-                feedbackMessage.classList.remove('hidden');
-                return;
-            }
-
-            if (feedback && db) {
                 try {
-                    const feedbackCollection = collection(db, 'artifacts', appId, 'public', 'data', 'feedback');
-                    await addDoc(feedbackCollection, {
-                        userId: auth.currentUser?.uid || 'anonymous',
-                        email: userEmail,
-                        feedback: feedback,
-                        timestamp: serverTimestamp()
+                    const response = await fetch(apiUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
                     });
-                    
-                    const lang = langSelect.value;
-                    feedbackMessage.textContent = translations[lang]['feedback-sent'];
-                    feedbackMessage.classList.remove('hidden');
-                    feedbackMessage.classList.add('bg-green-100', 'text-green-700', 'p-2', 'rounded-lg', 'mt-4');
-                    
-                    setTimeout(() => {
-                        feedbackModal.classList.remove('show');
-                    }, 3000);
-                } catch (e) {
-                    console.error("Error adding document: ", e);
-                    feedbackMessage.textContent = "Đã xảy ra lỗi khi gửi phản hồi.";
-                    feedbackMessage.classList.remove('hidden');
-                    feedbackMessage.classList.add('bg-red-100', 'text-red-700', 'p-2', 'rounded-lg', 'mt-4');
+
+                    if (!response.ok) {
+                        if (response.status === 429 && retryCount < maxRetries) {
+                            const delay = initialDelay * Math.pow(2, retryCount);
+                            console.log(`Rate limit exceeded. Retrying in ${delay}ms...`);
+                            await new Promise(resolve => setTimeout(resolve, delay));
+                            retryCount++;
+                            return await fetchWithRetry();
+                        }
+                        throw new Error(`API request failed with status ${response.status}`);
+                    }
+
+                    const result = await response.json();
+
+                    if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                        const base64Data = result.predictions[0].bytesBase64Encoded;
+                        const originalImageUrl = `data:image/png;base64,${base64Data}`;
+                        
+                        // Resize/crop hình ảnh dựa trên tỷ lệ khung hình đã chọn
+                        const resizedImageUrl = await resizeImage(originalImageUrl, selectedAspectRatio);
+                        
+                        generatedImage.src = resizedImageUrl;
+                        generatedImage.classList.remove('hidden');
+                        downloadLink.href = resizedImageUrl;
+                        downloadLink.classList.remove('hidden');
+                        downloadLink.innerHTML = `<i class="fa-solid fa-download mr-2"></i><span data-lang-key="downloadButton">${translations[lang].downloadButton}</span>`;
+                        
+                        // Lưu hình ảnh vào lịch sử
+                        await saveImageToHistory(prompt, resizedImageUrl, selectedStyle, selectedAspectRatio);
+                    } else {
+                        throw new Error('API response did not contain a valid image.');
+                    }
+                } catch (error) {
+                    console.error('Error generating image:', error);
+                    errorMessage.textContent = `${translations[lang].errorApi} ${error.message}`;
+                    errorMessage.classList.remove('hidden');
+                } finally {
+                    loadingSpinner.classList.add('hidden');
+                    generateButton.disabled = false;
+                    generateButton.innerHTML = `<i class="fa-solid fa-magic-wand-sparkles mr-2"></i><span data-lang-key="generateButton">${translations[lang].generateButton}</span>`;
                 }
-            }
-        });
-        
-        registerButton.addEventListener('click', async () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            authMessage.classList.add('hidden');
-
-            try {
-                await createUserWithEmailAndPassword(auth, email, password);
-                showAuthMessage('register-success');
-                setTimeout(() => { authModal.classList.remove('show'); }, 2000);
-            } catch (error) {
-                console.error("Registration error:", error);
-                handleAuthError(error.code);
-            }
-        });
-
-        loginButton.addEventListener('click', async () => {
-            const email = emailInput.value;
-            const password = passwordInput.value;
-            authMessage.classList.add('hidden');
-
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                // Modal sẽ tự đóng nhờ onAuthStateChanged
-            } catch (error) {
-                console.error("Login error:", error);
-                handleAuthError(error.code);
-            }
-        });
-        
-        googleLoginButton.addEventListener('click', async () => {
-            const provider = new GoogleAuthProvider();
-            try {
-                await signInWithPopup(auth, provider);
-            } catch (error) {
-                console.error("Google Sign-in error:", error);
-                handleAuthError(error.code);
-            }
-        });
-
-        signoutButton.addEventListener('click', async () => {
-            try {
-                await signOut(auth);
-            } catch (error) {
-                console.error("Sign out error:", error);
-            }
-        });
-        
-        function handleAuthError(errorCode) {
-            const lang = langSelect.value;
-            let errorMessageKey;
-            switch (errorCode) {
-                case 'auth/invalid-email': errorMessageKey = 'error-auth-invalid-email'; break;
-                case 'auth/wrong-password': errorMessageKey = 'error-auth-wrong-password'; break;
-                case 'auth/user-not-found': errorMessageKey = 'error-auth-user-not-found'; break;
-                case 'auth/weak-password': errorMessageKey = 'error-auth-weak-password'; break;
-                case 'auth/email-already-in-use': errorMessageKey = 'error-auth-email-already-in-use'; break;
-                case 'auth/popup-closed-by-user':
-                case 'auth/cancelled-popup-request':
-                case 'auth/account-exists-with-different-credential':
-                    errorMessageKey = 'error-auth-default';
-                    break;
-                default: errorMessageKey = 'error-auth-default'; break;
-            }
-            showAuthMessage(errorMessageKey);
-        }
-
-        // Chuyển đổi giữa các trang bằng nút
-        appTabButton.addEventListener('click', () => { activeTab = 'app-content'; showActiveTab(); });
-        profileTabButton.addEventListener('click', () => { activeTab = 'profile-content'; showActiveTab(); });
-        publicGalleryTabButton.addEventListener('click', () => { activeTab = 'public-gallery-content'; showActiveTab(); });
-        profileButton.addEventListener('click', () => { activeTab = 'profile-content'; showActiveTab(); });
-        publicGalleryButton.addEventListener('click', () => { activeTab = 'public-gallery-content'; showActiveTab(); });
-        backToAppButtonFromProfile.addEventListener('click', () => { activeTab = 'app-content'; showActiveTab(); });
-        backToAppButtonFromGallery.addEventListener('click', () => { activeTab = 'app-content'; showActiveTab(); });
-
-        // Event listeners cho các công cụ chỉnh sửa hình ảnh
-        grayscaleButton.addEventListener('click', applyGrayscale);
-        
-        // Cần thêm các listener cho canvas để vẽ
-        editCanvas.addEventListener('mousedown', startDrawing);
-        editCanvas.addEventListener('mousemove', draw);
-        editCanvas.addEventListener('mouseup', stopDrawing);
-        editCanvas.addEventListener('mouseout', stopDrawing);
-
-        brushColorPicker.addEventListener('change', (e) => brushColor = e.target.value);
-        brushSizeSlider.addEventListener('change', (e) => brushSize = e.target.value);
-        
-        editCancelButton.addEventListener('click', () => editImageModal.classList.remove('show'));
-        editDownloadButton.addEventListener('click', downloadEditedImage);
-        
-        // Event listeners cho modal hình ảnh công khai
-        closePublicImageModal.addEventListener('click', () => publicImageModal.classList.remove('show'));
-        
-        likeButton.addEventListener('click', async () => {
-            if (!db || !userId || !currentPublicImageId) {
-                showMessage('error-auth-default', 'error');
-                return;
-            }
-            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'sharedImages', currentPublicImageId);
-            const docSnap = await getDoc(docRef);
-            if (!docSnap.exists()) return;
+            };
             
-            const data = docSnap.data();
-            const likes = data.likes || [];
-            
-            try {
-                if (likes.includes(userId)) {
-                    await updateDoc(docRef, { likes: arrayRemove(userId) });
-                    showMessage('like-removed', 'success');
-                } else {
-                    await updateDoc(docRef, { likes: arrayUnion(userId) });
-                    showMessage('like-success', 'success');
-                }
-            } catch (e) {
-                console.error("Error updating likes:", e);
-                showMessage('error-like', 'error');
-            }
+            fetchWithRetry();
         });
-        
-        commentForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const comment = commentInput.value.trim();
-            if (!comment || !db || !userId || !currentPublicImageId) return;
-
-            try {
-                const commentsCollection = collection(db, 'artifacts', appId, 'public', 'data', 'sharedImages', currentPublicImageId, 'comments');
-                await addDoc(commentsCollection, {
-                    userId: userId,
-                    email: auth.currentUser.email,
-                    comment: comment,
-                    timestamp: serverTimestamp()
-                });
-                commentInput.value = '';
-                showMessage('comment-added', 'success');
-            } catch (e) {
-                console.error("Error adding comment:", e);
-                showMessage('error-comment', 'error');
-            }
-        });
-
-        window.onload = () => {
-            const savedBackground = localStorage.getItem(BACKGROUND_STORAGE_KEY) || DEFAULT_BACKGROUND;
-            
-            initializeFirebase();
-            applyBackground(savedBackground);
-            updateLanguage(langSelect.value);
-
-            setTimeout(() => {
-                welcomeScreen.classList.add('fade-out');
-                welcomeScreen.addEventListener('animationend', () => {
-                    welcomeScreen.remove();
-                });
-            }, 3000);
-        };
     </script>
 </body>
 </html>
