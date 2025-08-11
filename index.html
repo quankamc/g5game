@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Website tạo hình ảnh AI miễn phí chất lượng cao</title>
+    <title>Website tạo hình ảnh AI chất lượng cao miễn phí</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -34,6 +34,278 @@
         }
         .message-box.success {
             background-color: #d1fae5;
+            color: #047857;
+        }
+        /* Button effects */
+        .animated-btn {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        .animated-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        .animated-btn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 5px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            border-radius: 100%;
+            transform: scale(1, 1) translate(-50%);
+            transform-origin: 50% 50%;
+        }
+        .animated-btn:hover::after {
+            animation: ripple 1s ease-out;
+        }
+        @keyframes ripple {
+            0% {
+                transform: scale(0, 0);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(100, 100);
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800">
+    <div class="container flex flex-col items-center min-h-screen">
+        <div class="w-full max-w-2xl bg-white shadow-xl rounded-2xl p-6 md:p-8 mt-8">
+            <div class="flex justify-between items-center mb-4">
+                <h1 id="mainTitle" class="text-2xl md:text-4xl font-bold text-center text-gray-900 flex items-center">
+                    <i class="fas fa-star text-yellow-500 mr-2"></i>
+                    Tạo hình ảnh với AI
+                </h1>
+                <select id="languageSelect" class="p-2 border border-gray-300 rounded-lg">
+                    <option value="vi">Tiếng Việt</option>
+                    <option value="en">English</option>
+                </select>
+            </div>
+            <p id="descriptionText" class="text-sm md:text-base text-gray-600 mb-6">Nhập mô tả của bạn để tạo ra một hình ảnh độc đáo.</p>
+
+            <textarea id="promptInput" rows="4" class="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 resize-none text-gray-700" placeholder="Mô tả hình ảnh bạn muốn tạo..."></textarea>
+            
+            <div class="flex flex-col md:flex-row gap-4 mt-4">
+                <select id="sizeSelect" class="w-full md:w-1/2 p-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 text-gray-700">
+                    <option value="youtube">YouTube (16:9)</option>
+                    <option value="tiktok">TikTok/Shorts (9:16)</option>
+                    <option value="instagram_square">Instagram (1:1)</option>
+                    <option value="instagram_portrait">Instagram Story (4:5)</option>
+                </select>
+                <button id="generateBtn" class="w-full md:w-1/2 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md hover:shadow-lg flex items-center justify-center animated-btn">
+                    <i class="fas fa-brush mr-2"></i>
+                    Tạo ảnh
+                </button>
+            </div>
+            
+            <div id="messageBox" class="message-box"></div>
+
+            <div id="imageContainer" class="mt-8 flex flex-col items-center relative">
+                <div id="loadingIndicator" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                    <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        // Get DOM elements
+        const promptInput = document.getElementById('promptInput');
+        const generateBtn = document.getElementById('generateBtn');
+        const imageContainer = document.getElementById('imageContainer');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const messageBox = document.getElementById('messageBox');
+        const languageSelect = document.getElementById('languageSelect');
+        const sizeSelect = document.getElementById('sizeSelect');
+        const mainTitle = document.getElementById('mainTitle');
+        const descriptionText = document.getElementById('descriptionText');
+        
+        // Translation object
+        const translations = {
+            vi: {
+                title: 'Tạo hình ảnh với AI',
+                description: 'Nhập mô tả của bạn để tạo ra một hình ảnh độc đáo.',
+                placeholder: 'Mô tả hình ảnh bạn muốn tạo...',
+                button: 'Tạo ảnh',
+                downloadButton: 'Tải xuống',
+                prompt: 'Một bức ảnh chất lượng cao, chân thực và thanh tịnh về Đức Phật Thích Ca Mâu Ni đang ngồi thiền, an nhiên giảng pháp cho các đệ tử trong một khu rừng yên tĩnh. Hoàng hôn buông xuống, ánh sáng vàng ấm áp xuyên qua kẽ lá, tạo nên một không gian thanh bình và linh thiêng. Các đệ tử đang thành kính lắng nghe, khung cảnh tràn đầy sự tôn kính và vẻ đẹp tự nhiên.',
+                englishPrompt: "A high-quality, realistic, and peaceful image of Gautama Buddha meditating and calmly teaching his disciples in a tranquil forest. The setting sun casts a warm, golden light through the leaves, creating a serene and spiritual atmosphere. The disciples are respectfully listening, and the scene is full of reverence and natural beauty.",
+                errorPrompt: 'Vui lòng nhập mô tả để tạo ảnh.',
+                errorImage: 'Không thể tạo hình ảnh. Vui lòng thử lại.',
+                errorApi: 'Đã xảy ra lỗi. Vui lòng kiểm tra kết nối mạng và thử lại.',
+                success: 'Đã tạo hình ảnh thành công!',
+                sizeOptions: {
+                    'youtube': 'YouTube (16:9)',
+                    'tiktok': 'TikTok/Shorts (9:16)',
+                    'instagram_square': 'Instagram (1:1)',
+                    'instagram_portrait': 'Instagram Story (4:5)'
+                }
+            },
+            en: {
+                title: 'AI Image Generator',
+                description: 'Enter your description to create a unique image.',
+                placeholder: 'Describe the image you want to create...',
+                button: 'Generate Image',
+                downloadButton: 'Download',
+                prompt: "A high-quality, realistic, and peaceful image of Gautama Buddha meditating and calmly teaching his disciples in a tranquil forest. The setting sun casts a warm, golden light through the leaves, creating a serene and spiritual atmosphere. The disciples are respectfully listening, and the scene is full of reverence and natural beauty.",
+                englishPrompt: "A high-quality, realistic, and peaceful image of Gautama Buddha meditating and calmly teaching his disciples in a tranquil forest. The setting sun casts a warm, golden light through the leaves, creating a serene and spiritual atmosphere. The disciples are respectfully listening, and the scene is full of reverence and natural beauty.",
+                errorPrompt: 'Please enter a description to generate an image.',
+                errorImage: 'Could not generate image. Please try again.',
+                errorApi: 'An error occurred. Please check your network and try again.',
+                success: 'Image generated successfully!',
+                sizeOptions: {
+                    'youtube': 'YouTube (16:9)',
+                    'tiktok': 'TikTok/Shorts (9:16)',
+                    'instagram_square': 'Instagram (1:1)',
+                    'instagram_portrait': 'Instagram Story (4:5)'
+                }
+            }
+        };
+
+        // Function to update UI language
+        function updateLanguage(lang) {
+            const t = translations[lang];
+            mainTitle.innerHTML = `<i class="fas fa-star text-yellow-500 mr-2"></i>${t.title}`;
+            descriptionText.textContent = t.description;
+            promptInput.placeholder = t.placeholder;
+            generateBtn.innerHTML = `<i class="fas fa-brush mr-2"></i>${t.button}`;
+
+            sizeSelect.innerHTML = '';
+            for (const [key, value] of Object.entries(t.sizeOptions)) {
+                const option = document.createElement('option');
+                option.value = key;
+                option.textContent = value;
+                sizeSelect.appendChild(option);
+            }
+
+            const downloadBtn = document.getElementById('downloadBtn');
+            if (downloadBtn) {
+                downloadBtn.innerHTML = `<i class="fas fa-download mr-2"></i> ${t.downloadButton}`;
+            }
+
+            if (!promptInput.value.trim()) {
+                promptInput.value = t.prompt;
+            }
+        }
+
+        languageSelect.addEventListener('change', (event) => {
+            updateLanguage(event.target.value);
+        });
+
+        const generateImage = async () => {
+            const lang = languageSelect.value;
+            const prompt = promptInput.value;
+            if (!prompt.trim()) {
+                showMessage(translations[lang].errorPrompt, 'error');
+                return;
+            }
+
+            loadingIndicator.classList.remove('hidden');
+            imageContainer.innerHTML = '';
+            messageBox.style.display = 'none';
+
+            const englishPrompt = translations[lang].englishPrompt;
+            const selectedSize = sizeSelect.value;
+
+            let finalPrompt = englishPrompt;
+            let aspectRatioClass = '';
+            switch (selectedSize) {
+                case 'youtube':
+                    finalPrompt += ", a widescreen landscape image (16:9).";
+                    aspectRatioClass = 'aspect-video';
+                    break;
+                case 'tiktok':
+                    finalPrompt += ", a vertical portrait image (9:16).";
+                    aspectRatioClass = 'aspect-[9/16]';
+                    break;
+                case 'instagram_square':
+                    finalPrompt += ", a square image (1:1).";
+                    aspectRatioClass = 'aspect-square';
+                    break;
+                case 'instagram_portrait':
+                    finalPrompt += ", a vertical portrait image (4:5).";
+                    aspectRatioClass = 'aspect-[4/5]';
+                    break;
+            }
+
+            const payload = {
+                instances: { prompt: finalPrompt },
+                parameters: { "sampleCount": 1 }
+            };
+            
+            // QUAN TRỌNG:
+            // Khóa API được cung cấp tự động trong môi trường Canvas.
+            // Nếu bạn đưa mã này lên GitHub hoặc chạy cục bộ, bạn PHẢI thay thế
+            // chuỗi rỗng dưới đây bằng khóa API của riêng bạn.
+            // Ví dụ: const apiKey = "YOUR_OWN_API_KEY";
+            const apiKey = ""; 
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${apiKey}`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.predictions && result.predictions.length > 0 && result.predictions[0].bytesBase64Encoded) {
+                        const base64Data = result.predictions[0].bytesBase64Encoded;
+                        const imageUrl = `data:image/png;base64,${base64Data}`;
+                        
+                        const img = document.createElement('img');
+                        img.src = imageUrl;
+                        img.alt = prompt;
+                        img.className = `rounded-lg shadow-lg w-full h-auto object-cover max-w-full ${aspectRatioClass}`;
+                        imageContainer.appendChild(img);
+
+                        const downloadBtn = document.createElement('a');
+                        downloadBtn.id = 'downloadBtn';
+                        downloadBtn.href = imageUrl;
+                        downloadBtn.download = 'generated_image.png';
+                        downloadBtn.className = "mt-4 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 flex items-center justify-center animated-btn";
+                        downloadBtn.innerHTML = `<i class="fas fa-download mr-2"></i> ${translations[lang].downloadButton}`;
+                        imageContainer.appendChild(downloadBtn);
+                        
+                        showMessage(translations[lang].success, 'success');
+                    } else {
+                        showMessage(translations[lang].errorImage, 'error');
+                    }
+                } else {
+                    const error = await response.json();
+                    showMessage(error.error.message || translations[lang].errorApi, 'error');
+                }
+            } catch (error) {
+                console.error("Lỗi khi tạo hình ảnh:", error);
+                showMessage(translations[lang].errorApi, 'error');
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        };
+
+        generateBtn.addEventListener('click', generateImage);
+
+        function showMessage(text, type) {
+            messageBox.textContent = text;
+            messageBox.className = `message-box ${type}`;
+            messageBox.style.display = 'block';
+        }
+
+        window.onload = function() {
+            updateLanguage('vi');
+            generateImage();
+        };
+    </script>
+</body>
+</html>
+
             color: #047857;
         }
         /* Button effects */
