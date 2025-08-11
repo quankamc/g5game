@@ -3,37 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Website tạo hình ảnh AI chất lượng cao miễn phí</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f3f4f6;
-        }
-        .container {
-            max-width: 90%;
-            margin: 0 auto;
-            padding: 1.5rem;
-        }
-        .message-box {
-            display: none;
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-top: 1rem;
-            text-align: center;
-        }
-        .message-box.error {
-            background-color: #fee2e2;
-            color: #ef4444;
-        }
-        .message-box.info {
-            background-color: #e0f2fe;
-            color: #0284c7;
-        }
-        .message-box.success {
-            background-color: #d1fae5;
+    <title>Tạo Video AI Phật Pháp</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <header>
+        <h1>Tạo Video Phật Pháp với AI</h1>
+    </header>
+    <main>
+        <div class="form-container">
+            <form id="video-form">
+                <label for="text-input">Nội dung văn bản:</label>
+                <textarea id="text-input" placeholder="Nhập nội dung về Phật pháp tại đây..." required></textarea>
+
+                <label for="voice-select">Chọn giọng đọc:</label>
+                <select id="voice-select">
+                    <option value="male-1">Giọng nam trầm</option>
+                    <option value="female-1">Giọng nữ dịu dàng</option>
+                </select>
+
+                <label for="image-upload">Tải ảnh nền (hoặc dùng ảnh mặc định):</label>
+                <input type="file" id="image-upload" accept="image/*">
+
+                <button type="submit">Tạo Video</button>
+            </form>
+        </div>
+        <div class="video-preview" id="video-preview">
+            </div>
+    </main>
+    <footer>
+        <p>&copy; 2024 Tạo Video AI</p>
+    </footer>
+    <script src="script.js"></script>
+</body>
+</html>
             color: #047857;
         }
         /* Button effects */
